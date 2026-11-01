@@ -41,8 +41,6 @@ jobs:
     needs: checks
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    outputs:
-      release_tag: ${{ steps.version.outputs.release_tag }}
     permissions:
       contents: write
     steps:
@@ -61,8 +59,7 @@ jobs:
           ref = os.environ['GITHUB_REF']
           if ref.startswith('refs/tags/') and ref != 'refs/tags/' + tag:
               raise SystemExit('Release tag does not match pubspec.yaml')
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write('release_tag=' + tag + '\n')
+          Path('compat-release-tag.txt').write_text(tag + '\n')
           PY
       - uses: actions/setup-java@v4
         with:
@@ -113,6 +110,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
+          cp compat-release-tag.txt dist/compat-release-tag.txt
           signer=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
           aapt="$(dirname "$signer")/aapt"
           for abi in armeabi-v7a arm64-v8a x86_64; do
@@ -174,13 +172,21 @@ jobs:
         with:
           name: android5-apks
           path: dist
+      - name: Read the checked package version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag=$(cat dist/compat-release-tag.txt)
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-android5\.[0-9]+$ ]]
+          printf 'release_tag=%s\n' "$tag" >> "$GITHUB_OUTPUT"
       - name: Publish the compatibility preview
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.build.outputs.release_tag }}
+          tag_name: ${{ steps.version.outputs.release_tag }}
           target_commitish: ${{ github.sha }}
           prerelease: true
-          name: '${{ needs.build.outputs.release_tag }} · Android 5 compatibility preview'
+          name: '${{ steps.version.outputs.release_tag }} · Android 5 compatibility preview'
           body: |
             为 Android 5.1.1 制作的独立兼容版，基于 Pure Live TV v3.0.7。
             固定 Skia 渲染器，保留 MPV / IJK，支持与旧版并行安装。
@@ -188,9 +194,10 @@ jobs:
             提供 armeabi-v7a（32 位）及 arm64-v8a（64 位）安装包；按电视系统架构选择。
             SHA256SUMS 列出两个安装包的校验值。
 
-            这是预览版，尚未达到稳定播放验收标准。该电视已完成安装、启动及三平台基本播放验证。
-            机主反馈 MPV 兼容模式可恢复音画同步，但降至 720P 后仍有轻微掉帧。
-            本修订默认开启 MPV 兼容模式，IJK 关闭未使用的截图 GLES 路径；请继续对比实际播放效果。
+            这是预览版。该电视已完成安装、启动及三平台基本播放验证。
+            MPV 兼容模式已由机主确认声音同步，仍有轻微掉帧，机主反馈旧版也有类似现象。
+            默认开启 MPV 兼容模式；IJK 关闭截图 GLES 路径后卡顿改善，但这台电视仍音画不同步，暂不推荐。
+            修复 Android 5 搜索等原生输入框不能显示的问题，改用支持 API19+ 的组合方式。
           files: |
             dist/PureLive-TV-android5-armeabi-v7a-skia.apk
             dist/PureLive-TV-android5-arm64-v8a-skia.apk

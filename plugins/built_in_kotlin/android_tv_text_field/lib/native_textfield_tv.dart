@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show PlatformViewHitTestBehavior;
 import 'package:flutter/services.dart';
 import 'native_textfield_tv_platform_interface.dart';
 
@@ -251,16 +252,27 @@ class _NativeTextFieldState extends State<NativeTextField> {
       if (widget.fontSize != null) 'fontSize': widget.fontSize,
     };
 
-    // Texture-layer composition, the default. Hybrid composition was tried and
-    // reverted: attaching the view to the Android hierarchy made the field read
-    // as blurred in its entirety, the Flutter-drawn icon included, which was
-    // worse than what it was meant to fix. (The blur turned out to be Impeller's
-    // text rendering on the affected device - the skia build is crisp.)
-    Widget child = AndroidView(
+    // Hybrid composition supports API 19+. Flutter's texture render target
+    // requires API 23, so the default AndroidView fails on Android 5 TVs.
+    Widget child = PlatformViewLink(
       viewType: 'native_textfield_tv',
-      onPlatformViewCreated: _onPlatformViewCreated,
-      creationParams: creationParams,
-      creationParamsCodec: const StandardMessageCodec(),
+      surfaceFactory: (context, controller) => AndroidViewSurface(
+        controller: controller as AndroidViewController,
+        gestureRecognizers: const {},
+        hitTestBehavior: PlatformViewHitTestBehavior.opaque,
+      ),
+      onCreatePlatformView: (params) =>
+          PlatformViewsService.initExpensiveAndroidView(
+        id: params.id,
+        viewType: 'native_textfield_tv',
+        layoutDirection: Directionality.of(context),
+        creationParams: creationParams,
+        creationParamsCodec: const StandardMessageCodec(),
+        onFocus: () => params.onFocusChanged(true),
+      )
+            ..addOnPlatformViewCreatedListener(params.onPlatformViewCreated)
+            ..addOnPlatformViewCreatedListener(_onPlatformViewCreated)
+            ..create(),
     );
 
     if (widget.width != null || widget.height != null) {

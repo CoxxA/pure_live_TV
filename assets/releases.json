@@ -1,5 +1,29 @@
 [
   {
+    "version": "3.0.7-android5.3",
+    "title": "v3.0.7-android5.3 · Android 5 compatibility preview",
+    "date": "2026-11-01",
+    "github": "https://github.com/CoxxA/pure_live_TV/releases/tag/v3.0.7-android5.3",
+    "author": {
+      "name": "CoxxA"
+    },
+    "changeLog": "为 Android 5.1.1 制作的独立兼容版，基于 Pure Live TV v3.0.7。\n固定 Skia 渲染器，保留 MPV / IJK，支持与旧版并行安装。\n\n提供 armeabi-v7a（32 位）及 arm64-v8a（64 位）安装包；按电视系统架构选择。\nSHA256SUMS 列出两个安装包的校验值。\n\n这是预览版。该电视已完成安装、启动及三平台基本播放验证。\nMPV 兼容模式已由机主确认声音同步，仍有轻微掉帧，机主反馈旧版也有类似现象。\n默认开启 MPV 兼容模式；IJK 关闭截图 GLES 路径后卡顿改善，但这台电视仍音画不同步，暂不推荐。\n修复 Android 5 搜索等原生输入框不能显示的问题，改用支持 API19+ 的组合方式。\n",
+    "files": [
+      {
+        "name": "PureLive-TV-android5-armeabi-v7a-skia.apk",
+        "size": "34.03 MB",
+        "downloads": 0,
+        "url": "https://github.com/CoxxA/pure_live_TV/releases/download/v3.0.7-android5.3/PureLive-TV-android5-armeabi-v7a-skia.apk"
+      },
+      {
+        "name": "PureLive-TV-android5-arm64-v8a-skia.apk",
+        "size": "36.59 MB",
+        "downloads": 0,
+        "url": "https://github.com/CoxxA/pure_live_TV/releases/download/v3.0.7-android5.3/PureLive-TV-android5-arm64-v8a-skia.apk"
+      }
+    ]
+  },
+  {
     "version": "3.0.7-android5.1",
     "title": "v3.0.7-android5.1 · Android 5 compatibility preview",
     "date": "2026-11-01",
@@ -7,18 +31,18 @@
     "author": {
       "name": "CoxxA"
     },
-    "changeLog": "为 Android 5.1.1 制作的独立兼容版，基于 Pure Live TV v3.0.7。\n固定 Skia 渲染器，保留 MPV / IJK，支持与旧版并行安装。\n\n提供 armeabi-v7a（32 位）及 arm64-v8a（64 位）安装包；按电视系统架构选择。\nSHA256SUMS 列出两个安装包的校验值。\n\n这是预览版。CI 检查不代表已通过小米 L55M4-AA 真机验证。\n请重点验证斗鱼、B站、抖音的播放、声音、清晰度切换和遥控操作。\n",
+    "changeLog": "基于 Pure Live TV v3.0.7，为 Android 5.1.1 制作的独立兼容预览版。\r\n\r\n- 保留 MPV / IJK，固定 Skia，最低 API21；独立包名 `com.coxxa.purelive.tv.android5`。\r\n- ARM32 / ARM64 安装包及 SHA256SUMS 已提供；小米 L55M4-AA 实测系统为 ARM32，应下载 `armeabi-v7a`。\r\n- [自动检查](https://github.com/CoxxA/pure_live_TV/actions/runs/41304378539) 全部通过：224 项测试、构建、签名和 API22 安装启动。\r\n- 已在小米 L55M4-AA 上安装、启动并播放斗鱼、B站、抖音，验证遥控切台、清晰度切换、收藏与重启后保留。\r\n\r\n**已知问题：尚未达到稳定播放标准。** 机主反馈默认 MPV 和 IJK 均明显卡顿、音画不同步；MPV 开启兼容模式后声音同步，但 720P、关闭弹幕后仍轻微掉帧。正在制作后续测试版，不能把本版视为已验证流畅兼容。\r\n\r\n首次使用建议开启“播放器设置 → MPV → 兼容模式”，关闭弹幕后测试；直播平台的账号、清晰度与接口限制仍适用。ARM64 包未在该电视上实测。",
     "files": [
       {
         "name": "PureLive-TV-android5-armeabi-v7a-skia.apk",
         "size": "34.03 MB",
-        "downloads": 0,
+        "downloads": 1,
         "url": "https://github.com/CoxxA/pure_live_TV/releases/download/v3.0.7-android5.1/PureLive-TV-android5-armeabi-v7a-skia.apk"
       },
       {
         "name": "PureLive-TV-android5-arm64-v8a-skia.apk",
         "size": "36.59 MB",
-        "downloads": 0,
+        "downloads": 1,
         "url": "https://github.com/CoxxA/pure_live_TV/releases/download/v3.0.7-android5.1/PureLive-TV-android5-arm64-v8a-skia.apk"
       }
     ]

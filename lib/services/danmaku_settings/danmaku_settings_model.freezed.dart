@@ -15,10 +15,19 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$DanmakuSettingsModel {
 
- bool get hideDanmaku; bool get noEmojiMode; double get danmakuTopArea; double get danmakuArea; double get danmakuBottomArea; double get danmakuSpeed; double get danmakuFontSize; int get danmakuFontWeight; double get danmakuFontBorder; double get danmakuOpacity; bool get enableDanmakuDisplay; bool get enableDanmakuStroke; int get danmakuFps;/// Auto frame rate (follow the display) defaults off: a 120Hz panel doubles
-/// the danmaku compositing budget on boxes whose video decode is already
-/// tight. When off, [danmakuFps] applies (60 by default).
- bool get danmakuAutoFps; bool get enableDanmakuTapInteraction; bool get enableDanmakuLongPressInteraction; bool get collapseRepeatedDanmaku; int get repeatedDanmakuWindowSeconds; int get danmakuInteractionMigration; String get savedDanmakuTemplate; String get danmakuFontFamilyName; bool get enablePipDanmaku; bool get pipDanmakuAutoScale; bool get pipDanmakuNoEmojiMode; bool get pipDanmakuUseOriginalColor; int get pipDanmakuColor; double get pipDanmakuFontSize; int get pipDanmakuFontWeight; double get pipDanmakuSpeed; double get pipDanmakuOpacity; double get pipDanmakuArea; int get pipDanmakuMaxVisibleCount; double get pipDanmakuEmitInterval; int get pipDanmakuFps; bool get pipDanmakuAutoFps; bool get filterDouyuSuspectedAutomatedMessages; bool get enableDanmakuSimilarityFilter; int get danmakuSimilarityThreshold; int get danmakuSimilarityCacheDuration; int get danmakuSimilarityMaxCacheSize;
+ bool get hideDanmaku; bool get noEmojiMode; double get danmakuTopArea; double get danmakuArea; double get danmakuBottomArea; double get danmakuSpeed; double get danmakuFontSize; int get danmakuFontWeight; double get danmakuFontBorder; double get danmakuOpacity; bool get enableDanmakuDisplay; bool get enableDanmakuStroke; int get danmakuFps;/// Auto frame rate: follow the display's refresh rate instead of [danmakuFps].
+///
+/// The stored default is on (see DanmakuSettingsController.build) — a panel
+/// the engine can keep up with is the whole budget it has, and a fixed 60 on
+/// a 120Hz panel is a loss of smoothness for nothing. This factory default
+/// stays off for documents that predate the field, so an imported backup or
+/// a peer keeps the choice it was saved with.
+ bool get danmakuAutoFps; bool get enableDanmakuTapInteraction; bool get enableDanmakuLongPressInteraction; bool get collapseRepeatedDanmaku; int get repeatedDanmakuWindowSeconds; int get danmakuInteractionMigration; String get savedDanmakuTemplate; String get danmakuFontFamilyName;// Picture-in-picture danmaku. Synced but never consumed on TV.
+ bool get enablePipDanmaku; bool get pipDanmakuAutoScale; bool get pipDanmakuNoEmojiMode; bool get pipDanmakuUseOriginalColor; int get pipDanmakuColor; double get pipDanmakuFontSize; int get pipDanmakuFontWeight; double get pipDanmakuSpeed; double get pipDanmakuOpacity; double get pipDanmakuArea; int get pipDanmakuMaxVisibleCount; double get pipDanmakuEmitInterval; int get pipDanmakuFps; bool get pipDanmakuAutoFps;// Message filtering
+// Douyu's bot filter is part of its decoder now (only chat carrying the
+// `if=1` fan flag is kept), so this no longer has a switch; the field stays
+// for backups and for the site adapter's constructor.
+ bool get filterDouyuSuspectedAutomatedMessages; bool get enableDanmakuSimilarityFilter; int get danmakuSimilarityThreshold; int get danmakuSimilarityCacheDuration; int get danmakuSimilarityMaxCacheSize;
 /// Create a copy of DanmakuSettingsModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -267,9 +276,13 @@ class _DanmakuSettingsModel implements DanmakuSettingsModel {
 @override@JsonKey() final  bool enableDanmakuDisplay;
 @override@JsonKey() final  bool enableDanmakuStroke;
 @override@JsonKey() final  int danmakuFps;
-/// Auto frame rate (follow the display) defaults off: a 120Hz panel doubles
-/// the danmaku compositing budget on boxes whose video decode is already
-/// tight. When off, [danmakuFps] applies (60 by default).
+/// Auto frame rate: follow the display's refresh rate instead of [danmakuFps].
+///
+/// The stored default is on (see DanmakuSettingsController.build) — a panel
+/// the engine can keep up with is the whole budget it has, and a fixed 60 on
+/// a 120Hz panel is a loss of smoothness for nothing. This factory default
+/// stays off for documents that predate the field, so an imported backup or
+/// a peer keeps the choice it was saved with.
 @override@JsonKey() final  bool danmakuAutoFps;
 @override@JsonKey() final  bool enableDanmakuTapInteraction;
 @override@JsonKey() final  bool enableDanmakuLongPressInteraction;
@@ -278,6 +291,7 @@ class _DanmakuSettingsModel implements DanmakuSettingsModel {
 @override@JsonKey() final  int danmakuInteractionMigration;
 @override@JsonKey() final  String savedDanmakuTemplate;
 @override@JsonKey() final  String danmakuFontFamilyName;
+// Picture-in-picture danmaku. Synced but never consumed on TV.
 @override@JsonKey() final  bool enablePipDanmaku;
 @override@JsonKey() final  bool pipDanmakuAutoScale;
 @override@JsonKey() final  bool pipDanmakuNoEmojiMode;
@@ -292,6 +306,10 @@ class _DanmakuSettingsModel implements DanmakuSettingsModel {
 @override@JsonKey() final  double pipDanmakuEmitInterval;
 @override@JsonKey() final  int pipDanmakuFps;
 @override@JsonKey() final  bool pipDanmakuAutoFps;
+// Message filtering
+// Douyu's bot filter is part of its decoder now (only chat carrying the
+// `if=1` fan flag is kept), so this no longer has a switch; the field stays
+// for backups and for the site adapter's constructor.
 @override@JsonKey() final  bool filterDouyuSuspectedAutomatedMessages;
 @override@JsonKey() final  bool enableDanmakuSimilarityFilter;
 @override@JsonKey() final  int danmakuSimilarityThreshold;

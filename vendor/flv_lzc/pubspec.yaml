@@ -1,0 +1,19 @@
+name: flv_lzc
+description: Android 5 compatible IJK adapter, vendored for Pure Live TV.
+version: 1.0.4+purelive.2
+publish_to: none
+
+environment:
+  sdk: ">=3.8.1 <4.0.0"
+  flutter: ">=3.32.8"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.befovy.fijkplayer
+        pluginClass: FijkPlugin

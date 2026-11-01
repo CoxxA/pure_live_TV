@@ -3323,7 +3323,7 @@ final class $$ProvidersTableReferences
     _$AppDatabase db,
   ) => MultiTypedResultKey.fromTable(
     db.channels,
-    aliasName: 'providers__id__channels__provider_id',
+    aliasName: $_aliasNameGenerator(db.providers.id, db.channels.providerId),
   );
 
   $$ChannelsTableProcessedTableManager get channelsRefs {
@@ -3756,7 +3756,9 @@ final class $$ChannelsTableReferences
   $$ChannelsTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
   static $ProvidersTable _providerIdTable(_$AppDatabase db) =>
-      db.providers.createAlias('channels__provider_id__providers__id');
+      db.providers.createAlias(
+        $_aliasNameGenerator(db.channels.providerId, db.providers.id),
+      );
 
   $$ProvidersTableProcessedTableManager get providerId {
     final $_column = $_itemColumn<String>('provider_id')!;
@@ -3779,7 +3781,10 @@ final class $$ChannelsTableReferences
   _favoriteListChannelsRefsTable(_$AppDatabase db) =>
       MultiTypedResultKey.fromTable(
         db.favoriteListChannels,
-        aliasName: 'channels__id__favorite_list_channels__channel_id',
+        aliasName: $_aliasNameGenerator(
+          db.channels.id,
+          db.favoriteListChannels.channelId,
+        ),
       );
 
   $$FavoriteListChannelsTableProcessedTableManager
@@ -3804,7 +3809,10 @@ final class $$ChannelsTableReferences
   _failoverGroupChannelsRefsTable(_$AppDatabase db) =>
       MultiTypedResultKey.fromTable(
         db.failoverGroupChannels,
-        aliasName: 'channels__id__failover_group_channels__channel_id',
+        aliasName: $_aliasNameGenerator(
+          db.channels.id,
+          db.failoverGroupChannels.channelId,
+        ),
       );
 
   $$FailoverGroupChannelsTableProcessedTableManager
@@ -4732,7 +4740,10 @@ final class $$FavoriteListsTableReferences
   _favoriteListChannelsRefsTable(_$AppDatabase db) =>
       MultiTypedResultKey.fromTable(
         db.favoriteListChannels,
-        aliasName: 'favorite_lists__id__favorite_list_channels__list_id',
+        aliasName: $_aliasNameGenerator(
+          db.favoriteLists.id,
+          db.favoriteListChannels.listId,
+        ),
       );
 
   $$FavoriteListChannelsTableProcessedTableManager
@@ -5043,8 +5054,13 @@ final class $$FavoriteListChannelsTableReferences
     super.$_typedResult,
   );
 
-  static $FavoriteListsTable _listIdTable(_$AppDatabase db) => db.favoriteLists
-      .createAlias('favorite_list_channels__list_id__favorite_lists__id');
+  static $FavoriteListsTable _listIdTable(_$AppDatabase db) =>
+      db.favoriteLists.createAlias(
+        $_aliasNameGenerator(
+          db.favoriteListChannels.listId,
+          db.favoriteLists.id,
+        ),
+      );
 
   $$FavoriteListsTableProcessedTableManager get listId {
     final $_column = $_itemColumn<String>('list_id')!;
@@ -5060,8 +5076,10 @@ final class $$FavoriteListChannelsTableReferences
     );
   }
 
-  static $ChannelsTable _channelIdTable(_$AppDatabase db) => db.channels
-      .createAlias('favorite_list_channels__channel_id__channels__id');
+  static $ChannelsTable _channelIdTable(_$AppDatabase db) =>
+      db.channels.createAlias(
+        $_aliasNameGenerator(db.favoriteListChannels.channelId, db.channels.id),
+      );
 
   $$ChannelsTableProcessedTableManager get channelId {
     final $_column = $_itemColumn<String>('channel_id')!;
@@ -5446,7 +5464,10 @@ final class $$FailoverGroupsTableReferences
   _failoverGroupChannelsRefsTable(_$AppDatabase db) =>
       MultiTypedResultKey.fromTable(
         db.failoverGroupChannels,
-        aliasName: 'failover_groups__id__failover_group_channels__group_id',
+        aliasName: $_aliasNameGenerator(
+          db.failoverGroups.id,
+          db.failoverGroupChannels.groupId,
+        ),
       );
 
   $$FailoverGroupChannelsTableProcessedTableManager
@@ -5720,9 +5741,13 @@ final class $$FailoverGroupChannelsTableReferences
     super.$_typedResult,
   );
 
-  static $FailoverGroupsTable _groupIdTable(_$AppDatabase db) => db
-      .failoverGroups
-      .createAlias('failover_group_channels__group_id__failover_groups__id');
+  static $FailoverGroupsTable _groupIdTable(_$AppDatabase db) =>
+      db.failoverGroups.createAlias(
+        $_aliasNameGenerator(
+          db.failoverGroupChannels.groupId,
+          db.failoverGroups.id,
+        ),
+      );
 
   $$FailoverGroupsTableProcessedTableManager get groupId {
     final $_column = $_itemColumn<int>('group_id')!;
@@ -5738,8 +5763,13 @@ final class $$FailoverGroupChannelsTableReferences
     );
   }
 
-  static $ChannelsTable _channelIdTable(_$AppDatabase db) => db.channels
-      .createAlias('failover_group_channels__channel_id__channels__id');
+  static $ChannelsTable _channelIdTable(_$AppDatabase db) =>
+      db.channels.createAlias(
+        $_aliasNameGenerator(
+          db.failoverGroupChannels.channelId,
+          db.channels.id,
+        ),
+      );
 
   $$ChannelsTableProcessedTableManager get channelId {
     final $_column = $_itemColumn<String>('channel_id')!;

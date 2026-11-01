@@ -42,14 +42,14 @@ final class PlayerSettingsControllerProvider
 }
 
 String _$playerSettingsControllerHash() =>
-    r'9a1ac11c9fa8b03d9861c37f48b53eb964a25540';
+    r'208bdd17213f25dc9be6d4fd5f4ce65ecf006f26';
 
 abstract class _$PlayerSettingsController
     extends $Notifier<PlayerSettingsModel> {
   PlayerSettingsModel build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<PlayerSettingsModel, PlayerSettingsModel>;
     final element =
         ref.element
@@ -59,6 +59,6 @@ abstract class _$PlayerSettingsController
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

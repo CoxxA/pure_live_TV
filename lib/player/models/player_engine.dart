@@ -1,10 +1,8 @@
-enum PlayerEngine { mediaKit, fijk, betterPlayer, fvp }
+enum PlayerEngine { mediaKit, fijk }
 
 abstract class BackendIds {
   static const String mediaKit = 'mpv';
   static const String fijk = 'ijk';
-  static const String betterPlayer = 'better_player';
-  static const String fvp = 'fvp';
 }
 
 class PlayerEngineConfig {

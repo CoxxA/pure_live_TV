@@ -1,0 +1,19 @@
+name: media_core_media_kit
+description: media_kit backend adapter for the media_core player framework.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ">=3.8.1 <4.0.0"
+  flutter: ">=3.32.8"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  media_core:
+    path: ../media_core
+
+  # Last tested Android 5 compatible package set.
+  media_kit: 1.2.0
+  media_kit_video: 1.3.0
+  media_kit_libs_video: 1.0.6

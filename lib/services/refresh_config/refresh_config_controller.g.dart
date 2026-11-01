@@ -48,7 +48,7 @@ abstract class _$RefreshConfigController extends $Notifier<RefreshConfigModel> {
   RefreshConfigModel build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<RefreshConfigModel, RefreshConfigModel>;
     final element =
         ref.element
@@ -58,6 +58,6 @@ abstract class _$RefreshConfigController extends $Notifier<RefreshConfigModel> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

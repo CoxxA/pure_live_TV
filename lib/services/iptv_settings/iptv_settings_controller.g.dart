@@ -53,7 +53,7 @@ abstract class _$IptvSettingsController extends $Notifier<IptvSettingsModel> {
   IptvSettingsModel build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<IptvSettingsModel, IptvSettingsModel>;
     final element =
         ref.element
@@ -63,6 +63,6 @@ abstract class _$IptvSettingsController extends $Notifier<IptvSettingsModel> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

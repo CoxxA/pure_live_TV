@@ -46,7 +46,7 @@ abstract class _$HotTabs extends $Notifier<HotTabsState> {
   HotTabsState build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<HotTabsState, HotTabsState>;
     final element =
         ref.element
@@ -56,6 +56,6 @@ abstract class _$HotTabs extends $Notifier<HotTabsState> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

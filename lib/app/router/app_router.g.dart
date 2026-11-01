@@ -34,249 +34,182 @@ RouteBase get $settingsShellRoute => ShellRouteData.$route(
   routes: [
     GoRouteData.$route(
       path: '/settings/theme',
-      hasOverriddenOnExit: false,
       factory: $ThemeSettingsRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/theme_picker',
-      hasOverriddenOnExit: false,
       factory: $ThemePickerRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/grid_spacing',
-      hasOverriddenOnExit: false,
       factory: $GridSpacingRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/refresh',
-      hasOverriddenOnExit: false,
       factory: $RefreshSettingsRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/video',
-      hasOverriddenOnExit: false,
       factory: $VideoSettingsRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/player_kernel',
-      hasOverriddenOnExit: false,
       factory: $PlayerKernelSettingsRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/proxy',
-      hasOverriddenOnExit: false,
       factory: $ProxySettingsRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/general',
-      hasOverriddenOnExit: false,
       factory: $GeneralSettingsRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/navigation',
-      hasOverriddenOnExit: false,
       factory: $NavigationSettingsRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/nav_visibility',
-      hasOverriddenOnExit: false,
       factory: $NavVisibilityRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/nav_order',
-      hasOverriddenOnExit: false,
       factory: $NavOrderRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/nav_icons',
-      hasOverriddenOnExit: false,
       factory: $NavIconsRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/platform',
-      hasOverriddenOnExit: false,
       factory: $PlatformSettingsRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/cache',
-      hasOverriddenOnExit: false,
       factory: $CacheSettingsRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/config_preview',
-      hasOverriddenOnExit: false,
       factory: $ConfigPreviewRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/decoder',
-      hasOverriddenOnExit: false,
       factory: $DecoderSettingsRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/renderer',
-      hasOverriddenOnExit: false,
       factory: $RendererSettingsRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/audio_output',
-      hasOverriddenOnExit: false,
       factory: $AudioOutputSettingsRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/danmaku',
-      hasOverriddenOnExit: false,
       factory: $DanmakuSettingsRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/font',
-      hasOverriddenOnExit: false,
       factory: $FontSettingsRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/fonts',
-      hasOverriddenOnExit: false,
       factory: $FontFamilyRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settingsFontFamilyDanmaku',
-      hasOverriddenOnExit: false,
       factory: $FontFamilyDanmakuRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/page',
-      hasOverriddenOnExit: false,
       factory: $PageSettingsRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/audience',
-      hasOverriddenOnExit: false,
       factory: $AudienceSettingsRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/backups',
-      hasOverriddenOnExit: false,
       factory: $LocalBackupRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/device_sync',
-      hasOverriddenOnExit: false,
       factory: $DeviceSyncRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/log_viewer',
-      hasOverriddenOnExit: false,
       factory: $LogViewerRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings/backup_browser',
-      hasOverriddenOnExit: false,
       factory: $BackupBrowserRoute._fromState,
     ),
-    GoRouteData.$route(
-      path: '/iptv',
-      hasOverriddenOnExit: false,
-      factory: $IptvRoute._fromState,
-    ),
+    GoRouteData.$route(path: '/iptv', factory: $IptvRoute._fromState),
     GoRouteData.$route(
       path: '/iptv/resources',
-      hasOverriddenOnExit: false,
       factory: $IptvResourcesRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/iptv/import',
-      hasOverriddenOnExit: false,
       factory: $IptvImportRoute._fromState,
     ),
-    GoRouteData.$route(
-      path: '/iptv/sync',
-      hasOverriddenOnExit: false,
-      factory: $IptvSyncRoute._fromState,
-    ),
+    GoRouteData.$route(path: '/iptv/sync', factory: $IptvSyncRoute._fromState),
     GoRouteData.$route(
       path: '/iptv/headers',
-      hasOverriddenOnExit: false,
       factory: $IptvHeadersRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/hot_areas',
-      hasOverriddenOnExit: false,
       factory: $PlatformDisplayRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/hot_areas/visibility',
-      hasOverriddenOnExit: false,
       factory: $PlatformDisplayVisibilityRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/hot_areas/order',
-      hasOverriddenOnExit: false,
       factory: $PlatformDisplayOrderRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings_account',
-      hasOverriddenOnExit: false,
       factory: $AccountSettingsRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings_account/bilibili',
-      hasOverriddenOnExit: false,
       factory: $AccountBilibiliRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings_account/huya',
-      hasOverriddenOnExit: false,
       factory: $AccountHuyaRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings_account/douyu',
-      hasOverriddenOnExit: false,
       factory: $AccountDouyuRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings_account/yy',
-      hasOverriddenOnExit: false,
       factory: $AccountYyRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings_account/douyin',
-      hasOverriddenOnExit: false,
       factory: $AccountDouyinRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings_account/kuaishou',
-      hasOverriddenOnExit: false,
       factory: $AccountKuaishouRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings_account/twitch',
-      hasOverriddenOnExit: false,
       factory: $AccountTwitchRoute._fromState,
     ),
     GoRouteData.$route(
       path: '/settings_account/soop',
-      hasOverriddenOnExit: false,
       factory: $AccountSoopRoute._fromState,
     ),
-    GoRouteData.$route(
-      path: '/settingTags',
-      hasOverriddenOnExit: false,
-      factory: $TagsRoute._fromState,
-    ),
-    GoRouteData.$route(
-      path: '/backup',
-      hasOverriddenOnExit: false,
-      factory: $BackupRoute._fromState,
-    ),
-    GoRouteData.$route(
-      path: '/shield',
-      hasOverriddenOnExit: false,
-      factory: $DanmuShieldRoute._fromState,
-    ),
-    GoRouteData.$route(
-      path: '/about',
-      hasOverriddenOnExit: false,
-      factory: $AboutRoute._fromState,
-    ),
+    GoRouteData.$route(path: '/settingTags', factory: $TagsRoute._fromState),
+    GoRouteData.$route(path: '/backup', factory: $BackupRoute._fromState),
+    GoRouteData.$route(path: '/shield', factory: $DanmuShieldRoute._fromState),
+    GoRouteData.$route(path: '/about', factory: $AboutRoute._fromState),
   ],
 );
 
@@ -1307,11 +1240,8 @@ mixin $AboutRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
-RouteBase get $homeRoute => GoRouteData.$route(
-  path: '/home',
-  hasOverriddenOnExit: false,
-  factory: $HomeRoute._fromState,
-);
+RouteBase get $homeRoute =>
+    GoRouteData.$route(path: '/home', factory: $HomeRoute._fromState);
 
 mixin $HomeRoute on GoRouteData {
   static HomeRoute _fromState(GoRouterState state) => const HomeRoute();
@@ -1335,7 +1265,6 @@ mixin $HomeRoute on GoRouteData {
 
 RouteBase get $agreementPageRoute => GoRouteData.$route(
   path: '/agreement_page',
-  hasOverriddenOnExit: false,
   factory: $AgreementPageRoute._fromState,
 );
 
@@ -1362,7 +1291,6 @@ mixin $AgreementPageRoute on GoRouteData {
 
 RouteBase get $settingsMenuRoute => GoRouteData.$route(
   path: '/settings',
-  hasOverriddenOnExit: false,
   factory: $SettingsMenuRoute._fromState,
 );
 
@@ -1389,7 +1317,6 @@ mixin $SettingsMenuRoute on GoRouteData {
 
 RouteBase get $settingsIconPickerRoute => GoRouteData.$route(
   path: '/settings/icon_picker',
-  hasOverriddenOnExit: false,
   factory: $SettingsIconPickerRoute._fromState,
 );
 
@@ -1420,7 +1347,6 @@ mixin $SettingsIconPickerRoute on GoRouteData {
 
 RouteBase get $settingsLoadingStyleRoute => GoRouteData.$route(
   path: '/settings/loading_style',
-  hasOverriddenOnExit: false,
   factory: $SettingsLoadingStyleRoute._fromState,
 );
 
@@ -1447,7 +1373,6 @@ mixin $SettingsLoadingStyleRoute on GoRouteData {
 
 RouteBase get $settingsColorPickerRoute => GoRouteData.$route(
   path: '/settings/color_picker',
-  hasOverriddenOnExit: false,
   factory: $SettingsColorPickerRoute._fromState,
 );
 
@@ -1478,7 +1403,6 @@ mixin $SettingsColorPickerRoute on GoRouteData {
 
 RouteBase get $appUpdateRoute => GoRouteData.$route(
   path: '/app_update',
-  hasOverriddenOnExit: false,
   factory: $AppUpdateRoute._fromState,
 );
 
@@ -1505,7 +1429,6 @@ mixin $AppUpdateRoute on GoRouteData {
 
 RouteBase get $appDownloadRoute => GoRouteData.$route(
   path: '/app_update/download',
-  hasOverriddenOnExit: false,
   factory: $AppDownloadRoute._fromState,
 );
 
@@ -1532,7 +1455,6 @@ mixin $AppDownloadRoute on GoRouteData {
 
 RouteBase get $updateHistoryRoute => GoRouteData.$route(
   path: '/update_history',
-  hasOverriddenOnExit: false,
   factory: $UpdateHistoryRoute._fromState,
 );
 
@@ -1559,7 +1481,6 @@ mixin $UpdateHistoryRoute on GoRouteData {
 
 RouteBase get $areaRoomsRoute => GoRouteData.$route(
   path: '/area_rooms',
-  hasOverriddenOnExit: false,
   factory: $AreaRoomsRoute._fromState,
 );
 
@@ -1590,7 +1511,6 @@ mixin $AreaRoomsRoute on GoRouteData {
 
 RouteBase get $searchResultRoute => GoRouteData.$route(
   path: '/search_result',
-  hasOverriddenOnExit: false,
   factory: $SearchResultRoute._fromState,
 );
 
@@ -1621,7 +1541,6 @@ mixin $SearchResultRoute on GoRouteData {
 
 RouteBase get $wallpaperPageRoute => GoRouteData.$route(
   path: '/wallpaper_page',
-  hasOverriddenOnExit: false,
   factory: $WallpaperPageRoute._fromState,
 );
 
@@ -1648,7 +1567,6 @@ mixin $WallpaperPageRoute on GoRouteData {
 
 RouteBase get $wallpaperLibraryRoute => GoRouteData.$route(
   path: '/wallpaper_library',
-  hasOverriddenOnExit: false,
   factory: $WallpaperLibraryRoute._fromState,
 );
 
@@ -1675,7 +1593,6 @@ mixin $WallpaperLibraryRoute on GoRouteData {
 
 RouteBase get $wallpaperApiRoute => GoRouteData.$route(
   path: '/wallpaper_api',
-  hasOverriddenOnExit: false,
   factory: $WallpaperApiRoute._fromState,
 );
 
@@ -1702,7 +1619,6 @@ mixin $WallpaperApiRoute on GoRouteData {
 
 RouteBase get $wallpaperApiGroupRoute => GoRouteData.$route(
   path: '/wallpaper_api_group',
-  hasOverriddenOnExit: false,
   factory: $WallpaperApiGroupRoute._fromState,
 );
 
@@ -1733,7 +1649,6 @@ mixin $WallpaperApiGroupRoute on GoRouteData {
 
 RouteBase get $wallpaperGalleryRoute => GoRouteData.$route(
   path: '/wallpaper_gallery',
-  hasOverriddenOnExit: false,
   factory: $WallpaperGalleryRoute._fromState,
 );
 
@@ -1764,7 +1679,6 @@ mixin $WallpaperGalleryRoute on GoRouteData {
 
 RouteBase get $wallpaperItemsRoute => GoRouteData.$route(
   path: '/wallpaper_items',
-  hasOverriddenOnExit: false,
   factory: $WallpaperItemsRoute._fromState,
 );
 
@@ -1795,7 +1709,6 @@ mixin $WallpaperItemsRoute on GoRouteData {
 
 RouteBase get $wallpaperPreviewRoute => GoRouteData.$route(
   path: '/wallpaper_preview',
-  hasOverriddenOnExit: false,
   factory: $WallpaperPreviewRoute._fromState,
 );
 
@@ -1827,7 +1740,6 @@ mixin $WallpaperPreviewRoute on GoRouteData {
 RouteBase get $livePlayRoute => GoRouteData.$route(
   path: '/live_play',
   name: 'live_play',
-  hasOverriddenOnExit: false,
   factory: $LivePlayRoute._fromState,
 );
 

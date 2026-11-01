@@ -68,7 +68,7 @@ final class LivePlayControllerProvider
 }
 
 String _$livePlayControllerHash() =>
-    r'8a2dee2d5c7223b594fea0bc7984a25447b8fe3d';
+    r'55f4cb8b3091543668d331020d9719a7b4603535';
 
 /// Drives one live room: detail/quality/URL fetching, playback state
 /// projection, quality and line switching. Danmaku sessions live in
@@ -114,7 +114,7 @@ abstract class _$LivePlayController extends $Notifier<LivePlayState> {
   LivePlayState build(LivePlayArgs args);
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<LivePlayState, LivePlayState>;
     final element =
         ref.element
@@ -124,7 +124,7 @@ abstract class _$LivePlayController extends $Notifier<LivePlayState> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, () => build(_$args));
+    element.handleCreate(ref, () => build(_$args));
   }
 }
 
@@ -236,7 +236,7 @@ abstract class _$DanmakuSessionController
   DanmakuSessionState build(LivePlayArgs args);
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<DanmakuSessionState, DanmakuSessionState>;
     final element =
         ref.element
@@ -246,6 +246,6 @@ abstract class _$DanmakuSessionController
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, () => build(_$args));
+    element.handleCreate(ref, () => build(_$args));
   }
 }

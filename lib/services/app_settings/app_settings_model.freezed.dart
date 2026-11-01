@@ -15,7 +15,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AppSettingsModel {
 
- int get autoRefreshTime; bool get enableDenseFavorites; bool get enableBackgroundPlay; bool get enableAsmrSleepMode; int get asmrSleepMinutes; bool get enableRotateScreen; bool get enableScreenKeepOn; bool get enableAutoCheckUpdate; bool get useGitHubOriginForUpdates; bool get enableFullScreenDefault; bool get showSplashPage; String get refreshRateMode; bool get preferRealOnlineCounts; List<String> get realOnlinePlatforms; int get audienceMetricMigration; bool get enableMultiView; bool get enableNewWindowPlay; List<String> get savedMenuIds;
+ int get autoRefreshTime; bool get enableDenseFavorites; bool get enableBackgroundPlay; bool get enableAsmrSleepMode; int get asmrSleepMinutes; bool get enableRotateScreen; bool get enableScreenKeepOn; bool get enableAutoCheckUpdate; bool get useGitHubOriginForUpdates; bool get enableFullScreenDefault; bool get showSplashPage; String get refreshRateMode; bool get preferRealOnlineCounts; List<String> get realOnlinePlatforms; int get audienceMetricMigration;// Windows only. Synced across devices but never consumed on TV.
+ bool get enableMultiView; bool get enableNewWindowPlay; List<String> get savedMenuIds;
 /// Create a copy of AppSettingsModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -250,6 +251,7 @@ class _AppSettingsModel implements AppSettingsModel {
 }
 
 @override@JsonKey() final  int audienceMetricMigration;
+// Windows only. Synced across devices but never consumed on TV.
 @override@JsonKey() final  bool enableMultiView;
 @override@JsonKey() final  bool enableNewWindowPlay;
  final  List<String> _savedMenuIds;

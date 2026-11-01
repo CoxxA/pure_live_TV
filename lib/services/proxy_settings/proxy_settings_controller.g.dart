@@ -48,7 +48,7 @@ abstract class _$ProxySettingsController extends $Notifier<ProxySettingsModel> {
   ProxySettingsModel build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<ProxySettingsModel, ProxySettingsModel>;
     final element =
         ref.element
@@ -58,6 +58,6 @@ abstract class _$ProxySettingsController extends $Notifier<ProxySettingsModel> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

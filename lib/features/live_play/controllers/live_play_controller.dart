@@ -1276,7 +1276,7 @@ class DanmakuSessionController extends _$DanmakuSessionController {
       userName: msg.userName,
       textColor: color,
       fontSize: style?.fontSize,
-      fontWeight: style == null ? null : FontWeight(style.fontWeight),
+      fontWeight: style == null ? null : FontWeight.values[(style.fontWeight.clamp(100, 900) / 100).round() - 1],
       fontFamily: style?.fontFamily,
       showStroke: style?.showStroke,
       strokeColor: style == null ? null : Color(style.strokeColor),

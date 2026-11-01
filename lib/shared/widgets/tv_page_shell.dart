@@ -264,7 +264,7 @@ class _TvPageShellState extends State<TvPageShell> with RouteAware {
     // the visible page, and the d-pad's fallback restore landed on it — the visible page
     // ended up with no highlight and a remote that did nothing (settings -> theme settings ->
     // background settings → solid color → back).
-    final bool onStage = TickerMode.valuesOf(context).enabled;
+    final bool onStage = TickerMode.of(context);
     if (onStage != _onStage) {
       _onStage = onStage;
       // On screen again: whatever covered this page is gone, so take the highlight

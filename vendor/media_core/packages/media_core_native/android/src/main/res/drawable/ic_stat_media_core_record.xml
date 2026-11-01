@@ -1,0 +1,20 @@
+<!--
+  Notification icon for a recording session.
+
+  A record glyph (ring + dot) drawn in one colour: the platform renders a small
+  icon as an alpha silhouette, so anything else would be reduced to a blob.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2.5"
+        android:pathData="M12,4.5 A7.5,7.5 0 1,0 12.01,4.5" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,9 A3,3 0 1,0 12.01,9" />
+</vector>

@@ -1,0 +1,18 @@
+name: media_core_ijk_player
+description: ijkplayer (flv_lzc) backend adapter for the media_core player framework.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ">=3.8.1 <4.0.0"
+  flutter: ">=3.32.8"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  media_core:
+    path: ../media_core
+  media_core_logging:
+    path: ../media_core_logging
+  flv_lzc:
+    path: ../../../flv_lzc

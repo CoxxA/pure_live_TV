@@ -48,7 +48,7 @@ abstract class _$PageSettingsController extends $Notifier<PageSettingsModel> {
   PageSettingsModel build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<PageSettingsModel, PageSettingsModel>;
     final element =
         ref.element
@@ -58,6 +58,6 @@ abstract class _$PageSettingsController extends $Notifier<PageSettingsModel> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

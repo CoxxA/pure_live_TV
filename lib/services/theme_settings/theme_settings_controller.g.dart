@@ -48,7 +48,7 @@ abstract class _$ThemeSettingsController extends $Notifier<ThemeSettingsModel> {
   ThemeSettingsModel build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<ThemeSettingsModel, ThemeSettingsModel>;
     final element =
         ref.element
@@ -58,6 +58,6 @@ abstract class _$ThemeSettingsController extends $Notifier<ThemeSettingsModel> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

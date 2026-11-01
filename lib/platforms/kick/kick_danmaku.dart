@@ -15,7 +15,9 @@ typedef KickPusherFrame = ({bool subscribed, bool ping, bool error, LiveMessage?
 /// Read-only public chatroom subscription. The channel's numeric ID is not
 /// its chatroom ID; the latter is resolved from the current channel response.
 class KickDanmaku extends LiveDanmaku {
-  KickDanmaku({KickApi? api, this._connector = _connectSocket}) : _api = api ?? KickApi() {
+  KickDanmaku({KickApi? api, WebSocketConnector connector = _connectSocket})
+    : _api = api ?? KickApi(),
+      _connector = connector {
     heartbeatTime = 30000;
   }
 

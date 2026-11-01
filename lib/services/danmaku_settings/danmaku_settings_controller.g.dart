@@ -42,14 +42,14 @@ final class DanmakuSettingsControllerProvider
 }
 
 String _$danmakuSettingsControllerHash() =>
-    r'51d1d3be6072b869bf175e1d89f82f315433062d';
+    r'c24adfa6afad4a60c51fd3318fdaabdf654e9bd0';
 
 abstract class _$DanmakuSettingsController
     extends $Notifier<DanmakuSettingsModel> {
   DanmakuSettingsModel build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<DanmakuSettingsModel, DanmakuSettingsModel>;
     final element =
         ref.element
@@ -59,6 +59,6 @@ abstract class _$DanmakuSettingsController
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

@@ -9,7 +9,7 @@ class _DirectorySequence {
 /// Adapts application pages to the website's opaque cursor contract. Only
 /// bounded cursors are retained, never rooms, signed media or visitor tokens.
 class AcfunDirectory {
-  AcfunDirectory({required this._api, this.maxQueries = 12, this.maxCursors = 64}) {
+  AcfunDirectory({required AcfunApi api, this.maxQueries = 12, this.maxCursors = 64}) : _api = api {
     if (maxQueries < 1 || maxCursors < 2) throw ArgumentError('Invalid directory cache bounds');
   }
 

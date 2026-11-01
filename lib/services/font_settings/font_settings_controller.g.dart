@@ -41,7 +41,7 @@ abstract class _$FontSettingsController
   FutureOr<FontSettingsModel> build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref =
         this.ref as $Ref<AsyncValue<FontSettingsModel>, FontSettingsModel>;
     final element =
@@ -52,6 +52,6 @@ abstract class _$FontSettingsController
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

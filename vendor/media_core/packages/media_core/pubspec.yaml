@@ -1,0 +1,57 @@
+name: media_core
+
+description: A cross-platform reusable media player core.
+
+version: 0.1.0
+
+publish_to: none
+
+environment:
+  sdk: ">=3.8.1 <4.0.0"
+  flutter: ">=3.32.8"
+
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Reactive
+  rxdart: ^0.28.0
+
+  # Levelled, categorised logging
+  media_core_logging:
+    path: ../media_core_logging
+
+  # Memory accounting and pressure
+  media_core_memory:
+    path: ../media_core_memory
+
+  # Value equality
+  equatable: ^2.0.7
+
+  # Immutable models / JSON
+  freezed_annotation: ^3.1.0
+  json_annotation: ^4.9.0
+
+  # Collections
+  collection: ^1.19.1
+
+  # Metadata annotations
+  meta: ^1.16.0
+
+  # MIME
+  mime: ^1.0.6
+
+  # Async primitives
+  async: ^2.13.0
+
+  # Danmaku similarity scoring
+  fuzzywuzzy: ^1.1.6
+
+  # Testable time
+  clock: ^1.1.2
+
+  # Path
+  path: ^1.9.1
+  pool: ^1.5.3
+

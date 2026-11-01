@@ -57,7 +57,7 @@ abstract class _$SearchHistoryController extends $Notifier<List<String>> {
   List<String> build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<List<String>, List<String>>;
     final element =
         ref.element
@@ -67,6 +67,6 @@ abstract class _$SearchHistoryController extends $Notifier<List<String>> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

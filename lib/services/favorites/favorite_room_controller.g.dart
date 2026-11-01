@@ -58,7 +58,7 @@ abstract class _$FavoriteRoomController
   FavoriteSettingsModel build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<FavoriteSettingsModel, FavoriteSettingsModel>;
     final element =
         ref.element
@@ -68,6 +68,6 @@ abstract class _$FavoriteRoomController
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

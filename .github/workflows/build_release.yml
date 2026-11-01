@@ -1,9 +1,6 @@
-name: 更新历史发布数据
+name: Refresh Android 5 release index
 
 on:
-  # The manual button, and the tail of build-android-Tv: that workflow calls this
-  # file once the APKs are published, so a new release's download paths reach
-  # assets/releases.json without anyone pressing the button.
   workflow_dispatch:
   workflow_call:
 
@@ -11,55 +8,72 @@ permissions:
   contents: read
 
 concurrency:
-  # Static on purpose: a called workflow inherits the caller's `github.workflow`,
-  # so a group built from it would be shared with build-android-Tv and deadlock the
-  # release run against itself.
-  group: release-index-main
+  group: android5-release-index
   cancel-in-progress: false
 
 jobs:
-  update-json:
-    timeout-minutes: 10
+  update-index:
     runs-on: ubuntu-latest
-
+    timeout-minutes: 10
     permissions:
       contents: write
-
     steps:
-    # 1. 检出仓库代码（获取完整 Git 历史，为后续 rebase 做准备）
-    - name: Checkout repository
-      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      with:
-        ref: main
-        fetch-depth: 0
-
-    # 2. 设置 Python 环境
-    - name: Set up Python
-      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-      with:
-        python-version: '3.14'
-
-    # 3. 运行更新脚本
-    - name: Run update script
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-      run: python tool/update_releases.py
-
-    # 4. 检查是否有文件更新，并采用拉取重构（Pull Rebase）后安全推送
-    - name: Commit and Push changes
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-        # 检查是否有文件变动
-        if ! git diff --quiet -- assets/releases.json; then
-          git add assets/releases.json
-          git commit -m "chore: update releases.json [skip ci]"
-
-          # 推送前先拉取远程最新修改，防止与其他任务（如发布 Release）冲突
-          git pull --rebase origin main
-
-          git push origin main
-        else
-          echo "数据未发生变化，无需更新。"
-        fi
+      - uses: actions/checkout@v4
+        with:
+          ref: android5-compat
+          fetch-depth: 0
+      - name: Index only published compatibility packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re, urllib.request
+          from pathlib import Path
+          repository = os.environ['REPOSITORY']
+          request = urllib.request.Request(
+              f'https://api.github.com/repos/{repository}/releases?per_page=100',
+              headers={'Authorization': f'Bearer {os.environ["GH_TOKEN"]}', 'Accept': 'application/vnd.github+json'})
+          with urllib.request.urlopen(request) as response:
+              releases = json.load(response)
+          pattern = re.compile(r'^v(\d+)\.(\d+)\.(\d+)-android5\.(\d+)$')
+          indexed = []
+          for release in releases:
+              match = pattern.fullmatch(release['tag_name'])
+              if release.get('draft') or match is None:
+                  continue
+              files = []
+              abis = []
+              for abi in ['armeabi-v7a', 'arm64-v8a']:
+                  name = f'PureLive-TV-android5-{abi}-skia.apk'
+                  for asset in release['assets']:
+                      expected = f'https://github.com/{repository}/releases/download/{release["tag_name"]}/{name}'
+                      if asset['name'] == name and asset['browser_download_url'] == expected:
+                          files.append({'name': name, 'size': f'{asset["size"] / 1048576:.2f} MB', 'downloads': asset['download_count'], 'url': expected})
+                          abis.append(abi)
+              if len(files) != 2:
+                  continue
+              indexed.append((tuple(map(int, match.groups())), release, files, abis))
+          indexed.sort(key=lambda row: row[0], reverse=True)
+          if not indexed:
+              raise SystemExit('No complete Android 5 release exists; leaving the manifest unchanged.')
+          history = []
+          for _, release, files, _ in indexed:
+              history.append({'version': release['tag_name'][1:], 'title': release['name'], 'date': release['published_at'][:10],
+                  'github': release['html_url'], 'author': {'name': repository.split('/')[0]}, 'changeLog': release['body'] or '', 'files': files})
+          Path('assets/releases.json').write_text(json.dumps(history, ensure_ascii=False, indent=2) + '\n')
+          _, latest, _, abis = indexed[0]
+          manifest = {'version': latest['tag_name'][1:], 'version_desc': latest['body'] or '',
+              'prerelease': latest['prerelease'], 'android_abis': abis, 'download_url': latest['html_url']}
+          Path('assets/version.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
+          PY
+      - name: Save the compatibility index
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if ! git diff --quiet -- assets/version.json assets/releases.json; then
+            git add assets/version.json assets/releases.json
+            git commit -m 'chore: refresh Android 5 releases [skip ci]'
+            git pull --rebase origin android5-compat
+            git push origin HEAD:android5-compat
+          fi

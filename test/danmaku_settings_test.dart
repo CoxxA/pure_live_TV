@@ -89,6 +89,22 @@ void main() {
       expect(config.rasterCacheMaxBytes, 32 * 1024 * 1024);
     });
 
+    test('arbitrary font weights use the nearest Flutter 3.32 weight', () {
+      for (final example in <int, FontWeight>{
+        -50: FontWeight.w100,
+        149: FontWeight.w100,
+        150: FontWeight.w200,
+        537: FontWeight.w500,
+        880: FontWeight.w900,
+        1200: FontWeight.w900,
+      }.entries) {
+        final config = buildDanmakuConfig(
+          DanmakuSettingsModel(danmakuFontWeight: example.key),
+        );
+        expect(config.fontWeight, example.value, reason: 'weight ${example.key}');
+      }
+    });
+
     test('a weak GPU is handed a smaller budget', () {
       final config = buildDanmakuConfig(distinctive(), lowEndDevice: true);
 

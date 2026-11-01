@@ -47,7 +47,7 @@ abstract class _$HistoryController extends $Notifier<HistoryModel> {
   HistoryModel build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<HistoryModel, HistoryModel>;
     final element =
         ref.element
@@ -57,6 +57,6 @@ abstract class _$HistoryController extends $Notifier<HistoryModel> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

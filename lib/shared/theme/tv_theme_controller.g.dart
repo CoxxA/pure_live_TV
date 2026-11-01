@@ -47,7 +47,7 @@ abstract class _$TvThemeController extends $Notifier<TvThemeData> {
   TvThemeData build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<TvThemeData, TvThemeData>;
     final element =
         ref.element
@@ -57,6 +57,6 @@ abstract class _$TvThemeController extends $Notifier<TvThemeData> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

@@ -3,7 +3,7 @@
 // The heavy orchestration (watchdogs, line / engine fallback,
 // backoff) lives in package:media_core, and the engine adapters come
 // from the media_core adapter packages (media_core_media_kit /
-// media_core_ijk_player / media_core_better_player). This barrel only
+// media_core_ijk_player). This barrel only
 // exports the app-facing surface: the facade, the kernel-registration
 // service and the app-specific helpers the features consume.
 

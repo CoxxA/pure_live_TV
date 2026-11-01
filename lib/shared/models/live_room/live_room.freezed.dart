@@ -15,7 +15,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$LiveRoom {
 
- String get roomId; String get userId; String get link; String get title; String get nick; String get avatar; String get cover; String get area; String get watching; String get popularity; String get onlineViewers; String get totalViewers; String get followers; String get platform; List<String> get tagIds; String get introduction; String get notice; bool get status; bool get isRecord; LiveStatus get liveStatus; AudienceMetricType get audienceMetricType; String? get catchUpUrl; bool get isCatchUp; int? get catchUpStart; int? get catchUpEnd; String? get catchUpMode; String? get catchUpSource; double? get catchUpDays; double? get catchUpCorrectionHours; Map<String, String> get httpHeaders;@JsonKey(includeFromJson: false, includeToJson: false) dynamic get data;@JsonKey(includeFromJson: false, includeToJson: false) dynamic get danmakuData;
+ String get roomId; String get userId; String get link; String get title; String get nick; String get avatar; String get cover; String get area; String get watching; String get popularity; String get onlineViewers; String get totalViewers; String get followers; String get platform; List<String> get tagIds; String get introduction; String get notice; bool get status; bool get isRecord; LiveStatus get liveStatus; AudienceMetricType get audienceMetricType; String? get catchUpUrl; bool get isCatchUp; int? get catchUpStart; int? get catchUpEnd;// ---------- IPTV timeshift and catch-up metadata (M3U catchup-* tags) ----------
+ String? get catchUpMode; String? get catchUpSource; double? get catchUpDays; double? get catchUpCorrectionHours; Map<String, String> get httpHeaders;@JsonKey(includeFromJson: false, includeToJson: false) dynamic get data;@JsonKey(includeFromJson: false, includeToJson: false) dynamic get danmakuData;
 /// Create a copy of LiveRoom
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -267,6 +268,7 @@ class _LiveRoom extends LiveRoom {
 @override@JsonKey() final  bool isCatchUp;
 @override final  int? catchUpStart;
 @override final  int? catchUpEnd;
+// ---------- IPTV timeshift and catch-up metadata (M3U catchup-* tags) ----------
 @override final  String? catchUpMode;
 @override final  String? catchUpSource;
 @override final  double? catchUpDays;

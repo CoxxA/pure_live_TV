@@ -80,7 +80,7 @@ abstract class _$FontDownloadController
   Map<String, FontDownloadPhase> build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref =
         this.ref
             as $Ref<
@@ -98,6 +98,6 @@ abstract class _$FontDownloadController
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

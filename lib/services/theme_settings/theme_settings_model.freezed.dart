@@ -15,7 +15,13 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ThemeSettingsModel {
 
- String get themeModeName;@HexColorConverter() Color get themeColor; String get languageName; double get crossAxisSpacing; double get mainAxisSpacing; bool get spacingDirectV2; String get loadingStyle;@HexColorConverter() Color? get loadingStyleColor; int get denseRoomLayout;
+ String get themeModeName;// Uses the shared HexColorConverter.
+@HexColorConverter() Color get themeColor; String get languageName;// Grid gaps are stored directly in design pixels (32 = the historical
+// default look); `spacingDirectV2` marks a value already migrated from the
+// old offset semantics (stored 6 + a hidden 26 base).
+ double get crossAxisSpacing; double get mainAxisSpacing; bool get spacingDirectV2; String get loadingStyle;@HexColorConverter() Color? get loadingStyleColor;// Dense room layout: how many room-card grid columns the landscape layout
+// shows — 4 = standard, 6 = dense, 8 = extra dense.
+ int get denseRoomLayout;
 /// Create a copy of ThemeSettingsModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -221,13 +227,19 @@ class _ThemeSettingsModel implements ThemeSettingsModel {
   factory _ThemeSettingsModel.fromJson(Map<String, dynamic> json) => _$ThemeSettingsModelFromJson(json);
 
 @override@JsonKey() final  String themeModeName;
+// Uses the shared HexColorConverter.
 @override@JsonKey()@HexColorConverter() final  Color themeColor;
 @override@JsonKey() final  String languageName;
+// Grid gaps are stored directly in design pixels (32 = the historical
+// default look); `spacingDirectV2` marks a value already migrated from the
+// old offset semantics (stored 6 + a hidden 26 base).
 @override@JsonKey() final  double crossAxisSpacing;
 @override@JsonKey() final  double mainAxisSpacing;
 @override@JsonKey() final  bool spacingDirectV2;
 @override@JsonKey() final  String loadingStyle;
 @override@HexColorConverter() final  Color? loadingStyleColor;
+// Dense room layout: how many room-card grid columns the landscape layout
+// shows — 4 = standard, 6 = dense, 8 = extra dense.
 @override@JsonKey() final  int denseRoomLayout;
 
 /// Create a copy of ThemeSettingsModel

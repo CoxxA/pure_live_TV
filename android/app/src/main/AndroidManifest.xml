@@ -1,8 +1,6 @@
 <!--
-No package attribute here on purpose. AGP 8 removed namespace support from the
-manifest and AGP 9 ignores the attribute outright; the application id and the
-namespace both come from build.gradle.kts. Adding it back only produces a
-build warning and misleads readers into thinking it still has an effect.
+The namespace and independent compatibility application id are configured in
+build.gradle.kts, as required by AGP 8.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
 	<uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -19,8 +17,6 @@ build warning and misleads readers into thinking it still has an effect.
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 	<uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
 	<uses-permission android:name="android.permission.INTERNET" />
-	<!-- Android 17: sockets to a LAN proxy (PC Clash, soft router) need this. -->
-	<uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
 	<!--
 	The app checks for updates itself and hands the downloaded APK to the
 	system package installer, which Android 8+ gates behind this permission.

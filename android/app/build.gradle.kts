@@ -2,6 +2,7 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
+    id("org.jetbrains.kotlin.android")
     // The Flutter Gradle Plugin must be applied after the Android Gradle plugin.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -21,7 +22,7 @@ val hasReleaseSigning = listOf("keyAlias", "keyPassword", "storePassword").all {
 } && releaseStoreFile?.isFile == true
 
 android {
-    namespace = "com.mystyle.purelive.tv"
+    namespace = "com.coxxa.purelive.tv.android5"
 
     buildFeatures {
         buildConfig = true
@@ -29,8 +30,8 @@ android {
 
     // Pinned rather than inherited so the TV build does not silently shift when
     // the Flutter SDK bumps its defaults.
-    compileSdk = 37
-    ndkVersion = flutter.ndkVersion
+    compileSdk = 35
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -38,38 +39,36 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.mystyle.purelive.tv"
-        // Flutter's floor stays at its default here on purpose. The phone build
-        // raises it to 26 only because its recording engine ships API 26 native
-        // binaries, and this build does not include that engine. Keeping the
-        // lower floor keeps Android TV 7 boxes installable.
-        minSdk = flutter.minSdkVersion
-        targetSdk = 37
+        applicationId = "com.coxxa.purelive.tv.android5"
+        // Keep the floor explicit: the compatibility build targets Android 5.
+        minSdk = 21
+        targetSdk = 35
         multiDexEnabled = true
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
     signingConfigs {
+        getByName("debug") {
+            enableV1Signing = true
+            enableV2Signing = true
+        }
         if (hasReleaseSigning) {
             create("release") {
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")
                 storeFile = releaseStoreFile
                 storePassword = keystoreProperties.getProperty("storePassword")
+                // Android 5 cannot verify APK Signature Scheme v2 on its own.
+                enableV1Signing = true
+                enableV2Signing = true
             }
         }
     }
 
-    // Two renderer variants share one applicationId, so a device treats them
-    // as the same app and the user simply picks which APK to install:
-    //   impeller — engine default renderer, no manifest override
-    //   skia     — legacy renderer for boxes where Impeller misbehaves
-    //   (the EnableImpeller opt-out lives in src/skia/AndroidManifest.xml and
-    //   only merges into the skia variant)
+    // The Android 5 build always opts out of Impeller in the Skia manifest.
     flavorDimensions += "renderer"
     productFlavors {
-        create("impeller") { dimension = "renderer" }
         create("skia") { dimension = "renderer" }
     }
 
@@ -82,7 +81,7 @@ android {
             signingConfigs.getByName("debug")
         }
         release {
-            signingConfig = signing
+            signingConfig = if (hasReleaseSigning) signingConfigs.getByName("release") else null
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

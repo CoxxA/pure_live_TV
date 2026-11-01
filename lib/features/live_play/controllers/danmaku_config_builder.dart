@@ -48,7 +48,7 @@ BarrageConfig buildDanmakuConfig(
     ),
     baseSpeed: settings.danmakuSpeed.clamp(DanmakuSettingsModel.minSpeed, DanmakuSettingsModel.maxSpeed),
     opacity: settings.danmakuOpacity.clamp(0.05, 1.0),
-    fontWeight: FontWeight(settings.danmakuFontWeight.clamp(100, 900)),
+    fontWeight: FontWeight.values[(settings.danmakuFontWeight.clamp(100, 900) / 100).round() - 1],
     strokeWidth: settings.danmakuFontBorder.clamp(0, 8),
     showStroke: settings.enableDanmakuStroke,
     noEmojiMode: settings.noEmojiMode,

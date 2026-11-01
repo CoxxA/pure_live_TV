@@ -47,7 +47,7 @@ abstract class _$PlatformTab extends $Notifier<PlatformTabState> {
   PlatformTabState build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<PlatformTabState, PlatformTabState>;
     final element =
         ref.element
@@ -57,6 +57,6 @@ abstract class _$PlatformTab extends $Notifier<PlatformTabState> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

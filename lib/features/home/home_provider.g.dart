@@ -143,7 +143,7 @@ abstract class _$SideMenuIndex extends $Notifier<int> {
   int build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<int, int>;
     final element =
         ref.element
@@ -153,7 +153,7 @@ abstract class _$SideMenuIndex extends $Notifier<int> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }
 
@@ -195,7 +195,7 @@ abstract class _$IsMenuExpanded extends $Notifier<bool> {
   bool build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<bool, bool>;
     final element =
         ref.element
@@ -205,6 +205,6 @@ abstract class _$IsMenuExpanded extends $Notifier<bool> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

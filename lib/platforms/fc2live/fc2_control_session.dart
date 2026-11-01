@@ -27,11 +27,14 @@ final class Fc2ControlSession {
   Fc2ControlSession._({
     required this.channelId,
     required this.master,
-    required this._channel,
-    required this._subscription,
-    required this._closeTransport,
-    required this._health,
-  });
+    required WebSocketChannel channel,
+    required StreamSubscription<dynamic> subscription,
+    required FutureOr<void> Function() closeTransport,
+    required _Fc2SessionHealth health,
+  }) : _channel = channel,
+       _subscription = subscription,
+       _closeTransport = closeTransport,
+       _health = health;
 
   static const int messageLimit = 2 * 1024 * 1024;
 

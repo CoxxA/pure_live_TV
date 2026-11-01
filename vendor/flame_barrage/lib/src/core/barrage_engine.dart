@@ -1,0 +1,910 @@
+import 'dart:ui';
+import 'dart:collection';
+import 'package:flame/game.dart';
+import 'package:flame/events.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flame_barrage/flame_barrage.dart';
+import 'package:flame_barrage/src/core/engine_clock.dart';
+import 'package:flame_barrage/src/model/barrage/engine_state.dart';
+
+class _PendingBarrage {
+  const _PendingBarrage(this.item, this.enqueuedAtMs);
+
+  final BarrageItem item;
+  final int enqueuedAtMs;
+}
+
+class BarrageEngine extends FlameGame with TapCallbacks {
+  BarrageEngine({required BarrageConfig config, required this.emojiAtlas})
+    : _config = config,
+      _renderCache = RenderCache(maxSize: config.pictureCacheMaxSize, maxBytes: config.rasterCacheMaxBytes),
+      _pool = BarragePool(maxSize: config.barragePoolMaxSize) {
+    _parser = RichParser(atlas: emojiAtlas, maxCacheSize: config.textCacheMaxSize);
+    _layout = MixedLayout(atlas: emojiAtlas, maxTextCacheSize: config.textCacheMaxSize);
+    _renderer = const MixedRenderer();
+    // A mounted Flame game otherwise owns a display-rate ticker even when the
+    // room is silent. It also repaints at the display refresh rate even when
+    // BarrageConfig.fps is lower, because skipping update() does not stop
+    // GameRenderBox from painting. Keep Flame's ticker stopped and pulse the
+    // engine only at the configured rate while there is visible work.
+    pauseEngine();
+  }
+
+  BarrageConfig _config;
+  BarrageConfig get config => _config;
+  final EmojiAtlas emojiAtlas;
+
+  late final RichParser _parser;
+  late final MixedLayout _layout;
+  late final MixedRenderer _renderer;
+
+  final RenderCache _renderCache;
+  final TrackManager _trackManager = TrackManager();
+
+  /// Reused for every blit so the steady-state render loop allocates nothing
+  /// but the destination offset.
+  final Paint _imagePaint = Paint()
+    ..isAntiAlias = false
+    ..filterQuality = FilterQuality.low;
+
+  /// Device pixels per logical pixel the cached bitmaps are baked at, so text
+  /// stays as crisp as the vector path on high density panels.
+  double _rasterScale = 1.0;
+
+  final TrackAllocator _trackAllocator = const TrackAllocator();
+  final SpeedStrategy _speedStrategy = const SpeedStrategy();
+  final BarragePool _pool;
+
+  final Queue<_PendingBarrage> _waiting = Queue<_PendingBarrage>();
+  final Queue<_PendingBarrage> _pausedBuffer = Queue<_PendingBarrage>();
+
+  List<BarrageEntry> _activeEntries = [];
+  List<BarrageEntry> _backbufferEntries = [];
+
+  int _currentAliveCount = 0;
+
+  double _emitTimer = 0.0;
+  double _metricTimer = 0.0;
+  double _cleanupTimer = 0.0;
+  bool _initialized = false;
+  bool _appActive = true;
+  Ticker? _frameTicker;
+  Duration? _lastVsyncElapsed;
+  int _framePhaseMicros = 0;
+  int _elapsedSinceStepMicros = 0;
+  int? _scheduledFps;
+  int _frameStepCount = 0;
+
+  EngineState _state = EngineState.running;
+  bool get isPaused => _state == EngineState.paused;
+  final EngineClock clock = EngineClock();
+
+  double _calculateAllowedHeight(double rawHeight) {
+    final BuildContext? ctx = buildContext;
+    double topInset = 0.0;
+    double bottomInset = 0.0;
+    if (ctx != null && _config.safeArea) {
+      topInset = MediaQuery.paddingOf(ctx).top;
+      bottomInset = MediaQuery.paddingOf(ctx).bottom;
+    }
+    final double finalTop = topInset + _config.topAreaDistance;
+    final double finalBottom = bottomInset + _config.bottomAreaDistance;
+    // TrackManager applies the configured area percentage. Returning an
+    // already-scaled value here applied the percentage twice (20% became 4%)
+    // and made lane availability change unexpectedly after rotation.
+    return (rawHeight - finalTop - finalBottom).clamp(0.0, rawHeight).toDouble();
+  }
+
+  double _getTopOffset() {
+    final BuildContext? ctx = buildContext;
+    double topInset = 0.0;
+    if (ctx != null && _config.safeArea) {
+      topInset = MediaQuery.paddingOf(ctx).top;
+    }
+    return topInset + _config.topAreaDistance;
+  }
+
+  double _getBottomOffset() {
+    final BuildContext? ctx = buildContext;
+    double bottomInset = 0.0;
+    if (ctx != null && _config.safeArea) {
+      bottomInset = MediaQuery.paddingOf(ctx).bottom;
+    }
+    return bottomInset + _config.bottomAreaDistance;
+  }
+
+  void pause() {
+    if (isPaused) return;
+    _state = EngineState.paused;
+    clock.pause();
+    _stopFramePulses();
+  }
+
+  void resume() {
+    if (!isPaused) return;
+    clock.resume();
+    _flushPausedBuffer();
+    _state = EngineState.running;
+    _resumeLoopIfNeeded();
+  }
+
+  void _resumeLoopIfNeeded() {
+    if (!isPaused && _appActive && _initialized && isAttached && (_waiting.isNotEmpty || _currentAliveCount > 0)) {
+      _startFramePulses();
+    }
+  }
+
+  void _suspendLoopIfIdle() {
+    if (_waiting.isEmpty && _currentAliveCount == 0) {
+      _stopFramePulses();
+    }
+  }
+
+  void _startFramePulses() {
+    final targetFps = _config.fps.clamp(1, 240).toInt();
+    if (_frameTicker?.isActive == true && _scheduledFps == targetFps) return;
+
+    _stopFramePulses();
+    // Flame must stay paused for stepEngine() to advance exactly one frame.
+    // Timer.periodic is unrelated to display vsync and its wakeups drift or
+    // coalesce under load. Ticker aligns every opportunity with Flutter's
+    // frame scheduler; the accumulator below still honors lower configured
+    // rates and naturally caps impossible values to the physical display.
+    pauseEngine();
+    _scheduledFps = targetFps;
+    _lastVsyncElapsed = null;
+    _framePhaseMicros = 0;
+    _elapsedSinceStepMicros = 0;
+    _frameTicker ??= Ticker(_onFrameTick, debugLabel: 'BarrageEngine.vsync');
+    _frameTicker!.start();
+  }
+
+  void _onFrameTick(Duration elapsed) {
+    if (isPaused || !_appActive || !_initialized || !isAttached || (_waiting.isEmpty && _currentAliveCount == 0)) {
+      _stopFramePulses();
+      return;
+    }
+
+    final previous = _lastVsyncElapsed;
+    _lastVsyncElapsed = elapsed;
+    if (previous == null) return;
+
+    final targetFps = _scheduledFps ?? _config.fps.clamp(1, 240).toInt();
+    final intervalMicros = (Duration.microsecondsPerSecond / targetFps).round();
+    final rawDeltaMicros = (elapsed - previous).inMicroseconds;
+    final deltaMicros = rawDeltaMicros.clamp(1, intervalMicros * 3).toInt();
+    _framePhaseMicros += deltaMicros;
+    _elapsedSinceStepMicros += deltaMicros;
+    // A small tolerance avoids losing every other frame to integer rounding
+    // at rates such as 59.94/119.88 Hz.
+    if (_framePhaseMicros + 250 < intervalMicros) return;
+
+    if (_framePhaseMicros < intervalMicros) {
+      _framePhaseMicros = 0;
+    } else {
+      _framePhaseMicros %= intervalMicros;
+    }
+    final stepMicros = _elapsedSinceStepMicros.clamp(1, intervalMicros * 3).toInt();
+    _elapsedSinceStepMicros = 0;
+    _frameStepCount++;
+    stepEngine(stepTime: stepMicros / Duration.microsecondsPerSecond);
+  }
+
+  void _stopFramePulses() {
+    _frameTicker?.stop();
+    _lastVsyncElapsed = null;
+    _framePhaseMicros = 0;
+    _elapsedSinceStepMicros = 0;
+    _scheduledFps = null;
+    pauseEngine();
+  }
+
+  void _flushPausedBuffer() {
+    final maxPendingCount = _config.maxPendingCount.clamp(1, 10000);
+    while (_pausedBuffer.isNotEmpty) {
+      while (_waiting.length >= maxPendingCount) {
+        _waiting.removeFirst();
+      }
+      _waiting.add(_pausedBuffer.removeFirst());
+    }
+  }
+
+  @override
+  void onTapDown(TapDownEvent event) {
+    final clickPos = event.localPosition;
+    final int len = _activeEntries.length;
+
+    for (int i = len - 1; i >= 0; i--) {
+      final entry = _activeEntries[i];
+      if (!entry.active) continue;
+
+      final double left = entry.x;
+      final double top = entry.y;
+      final double right = left + entry.width;
+      final double bottom = top + entry.height;
+
+      if (clickPos.x >= left && clickPos.x <= right && clickPos.y >= top && clickPos.y <= bottom) {
+        event.handled = true;
+        entry.item.onTapDown?.call();
+        break;
+      }
+    }
+  }
+
+  /// Dispatches a Flutter-layer pointer to the top-most visible barrage item.
+  /// This lets the video gesture surface keep swipe/double-tap handling while
+  /// still supporting precise danmaku actions.
+  bool triggerItemAt(double x, double y, {required bool longPress}) {
+    for (var i = _activeEntries.length - 1; i >= 0; i--) {
+      final entry = _activeEntries[i];
+      if (!entry.active || x < entry.x || x > entry.x + entry.width || y < entry.y || y > entry.y + entry.height) {
+        continue;
+      }
+      final callback = longPress ? entry.item.onLongTapDown : entry.item.onTapUp;
+      if (callback == null) return false;
+      callback();
+      return true;
+    }
+    return false;
+  }
+
+  @override
+  void onLongTapDown(TapDownEvent event) {
+    final clickPos = event.localPosition;
+    final int len = _activeEntries.length;
+    for (int i = len - 1; i >= 0; i--) {
+      final entry = _activeEntries[i];
+      if (!entry.active) continue;
+      if (clickPos.x >= entry.x &&
+          clickPos.x <= entry.x + entry.width &&
+          clickPos.y >= entry.y &&
+          clickPos.y <= entry.y + entry.height) {
+        event.handled = true;
+        entry.item.onLongTapDown?.call();
+        break;
+      }
+    }
+  }
+
+  @override
+  void onTapUp(TapUpEvent event) {
+    final clickPos = event.localPosition;
+    final int len = _activeEntries.length;
+    for (int i = len - 1; i >= 0; i--) {
+      final entry = _activeEntries[i];
+      if (!entry.active) continue;
+      if (clickPos.x >= entry.x &&
+          clickPos.x <= entry.x + entry.width &&
+          clickPos.y >= entry.y &&
+          clickPos.y <= entry.y + entry.height) {
+        event.handled = true;
+        entry.item.onTapUp?.call();
+        break;
+      }
+    }
+  }
+
+  @override
+  void onTapCancel(TapCancelEvent event) {
+    final int len = _activeEntries.length;
+    for (int i = 0; i < len; i++) {
+      if (_activeEntries[i].active) {
+        _activeEntries[i].item.onTapCancel?.call();
+      }
+    }
+  }
+
+  @override
+  Color backgroundColor() => Colors.transparent;
+
+  void updateConfig(BarrageConfig newConfig) {
+    final fpsChanged = _config.fps != newConfig.fps;
+    _config = newConfig;
+    _parser.updateMaxCacheSize(newConfig.textCacheMaxSize);
+    _layout.updateMaxTextCacheSize(newConfig.textCacheMaxSize);
+    _renderCache.updateLimits(
+      maxSize: newConfig.pictureCacheMaxSize,
+      maxBytes: newConfig.rasterCacheMaxBytes,
+    );
+    _syncRasterScale();
+    _pool.updateMaxSize(newConfig.barragePoolMaxSize);
+    if (_initialized) {
+      _trackManager.initialize(_config, _calculateAllowedHeight(size.y));
+    }
+    if (fpsChanged && _frameTicker?.isActive == true) {
+      _startFramePulses();
+    }
+  }
+
+  @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+    _trackManager.initialize(_config, _calculateAllowedHeight(size.y));
+    _initialized = true;
+    _syncRasterScale();
+    _resumeLoopIfNeeded();
+  }
+
+  @override
+  void onGameResize(Vector2 size) {
+    super.onGameResize(size);
+    _trackManager.initialize(_config, _calculateAllowedHeight(size.y));
+    _initialized = true;
+    _syncRasterScale();
+    _resumeLoopIfNeeded();
+  }
+
+  /// Keeps [_rasterScale] in sync with the display density so baked bitmaps are
+  /// rasterized at device resolution instead of being upscaled by the GPU.
+  void _syncRasterScale() {
+    double scale = 1.0;
+    final BuildContext? ctx = buildContext;
+    if (ctx != null) {
+      try {
+        final double? ratio = MediaQuery.maybeDevicePixelRatioOf(ctx);
+        if (ratio != null && ratio > 0) {
+          scale = ratio.clamp(1.0, 4.0).toDouble();
+        }
+      } catch (_) {
+        scale = 1.0;
+      }
+    }
+    if ((scale - _rasterScale).abs() < 0.01) return;
+    // Bitmaps baked for a different density would be resampled at the wrong
+    // size; messages still on screen keep theirs until they are recycled.
+    if (_initialized) _renderCache.clear();
+    _rasterScale = scale;
+  }
+
+  void pushMessage(BarrageItem item) {
+    final pending = _PendingBarrage(item, DateTime.now().millisecondsSinceEpoch);
+    final maxPendingCount = _config.maxPendingCount.clamp(1, 10000);
+    while (_waiting.length + _pausedBuffer.length >= maxPendingCount) {
+      if (_waiting.isNotEmpty) {
+        _waiting.removeFirst();
+      } else {
+        _pausedBuffer.removeFirst();
+      }
+    }
+    if (isPaused) {
+      _pausedBuffer.add(pending);
+    } else {
+      _waiting.add(pending);
+      _resumeLoopIfNeeded();
+    }
+  }
+
+  @override
+  void update(double dt) {
+    if (!_initialized || isPaused) return;
+
+    final targetFps = _config.fps.clamp(1, 240);
+    final frameInterval = 1.0 / targetFps;
+    final elapsed = dt.clamp(0.0, frameInterval * 3).toDouble();
+    super.update(elapsed);
+
+    clock.tick(elapsed);
+    final int nowMs = clock.now();
+
+    _emitTimer += elapsed;
+    if (_emitTimer >= _config.emitInterval) {
+      _emitTimer = 0.0;
+      _dispatchWaiting(nowMs);
+    }
+    // Warms the parser/layout caches for whatever is now at the front of
+    // the queue. Cheap once warm (hash lookup only), so paying it here on
+    // an otherwise-idle frame means the frame that actually fires the emit
+    // timer below doesn't also have to pay for paragraph shaping.
+    _prepareHead();
+
+    final int len = _activeEntries.length;
+
+    for (int i = 0; i < len; i++) {
+      final entry = _activeEntries[i];
+      if (!entry.active) continue;
+
+      if (entry.item.type == BarrageType.scroll) {
+        final deltaMs = nowMs - entry.lastUpdateTime;
+        entry.x -= entry.speed * deltaMs / 1000.0;
+        entry.lastUpdateTime = nowMs;
+        if (entry.x + entry.width < 0) {
+          entry.active = false;
+        }
+      } else {
+        if (nowMs >= entry.expireTime) {
+          entry.active = false;
+        }
+      }
+    }
+
+    _cleanupTimer += elapsed;
+    if (_cleanupTimer >= 0.5) {
+      _cleanupTimer = 0.0;
+
+      _backbufferEntries.clear();
+      final int currentLen = _activeEntries.length;
+
+      for (int i = 0; i < currentLen; i++) {
+        final entry = _activeEntries[i];
+        if (entry.active) {
+          _backbufferEntries.add(entry);
+        } else {
+          _releaseEntry(entry);
+          _currentAliveCount--;
+        }
+      }
+
+      final List<BarrageEntry> temp = _activeEntries;
+      _activeEntries = _backbufferEntries;
+      _backbufferEntries = temp;
+    }
+
+    _metricTimer += elapsed;
+    if (_metricTimer >= 0.032) {
+      _metricTimer = 0.0;
+      _updateTrackMetrics(nowMs);
+    }
+
+    _suspendLoopIfIdle();
+  }
+
+  bool _itemHasConfigOverrides(BarrageItem item) {
+    return item.textColor != null ||
+        item.fontSize != null ||
+        item.fontWeight != null ||
+        item.fontStyle != null ||
+        item.fontFamily != null ||
+        item.letterSpacing != null ||
+        item.opacity != null ||
+        item.showStroke != null ||
+        item.strokeColor != null ||
+        item.strokeWidth != null ||
+        item.showShadow != null ||
+        item.shadowColor != null ||
+        item.shadowBlur != null ||
+        item.shadowOffset != null ||
+        item.fixedDuration != null ||
+        item.emojiSize != null ||
+        item.baseSpeed != null ||
+        item.overlapSafeGap != null;
+  }
+
+  // The expensive part of dispatching a message is text shaping inside
+  // MixedLayout._buildParagraph (and it happens twice per text fragment
+  // when showStroke is on — once for fill, once for stroke). Left alone,
+  // that cost lands entirely in whichever frame the emit timer fires,
+  // stacked on top of track allocation and entry spawn in the same frame —
+  // a spike that's easy to miss on a fast device and a dropped frame on a
+  // slow one. An item usually sits at the front of _waiting for several
+  // frames before it's actually due, so shape it ahead of time here: both
+  // RichParser and MixedLayout cache by content/hash, so calling parse()
+  // and layout() again at dispatch time is just a cache hit once this has
+  // already run for the same head item.
+  void _prepareHead() {
+    if (_waiting.isEmpty) return;
+    final item = _waiting.first.item;
+    final resolvedConfig = _itemHasConfigOverrides(item)
+        ? _config.copyWith(
+            textColor: item.textColor,
+            fontSize: item.fontSize,
+            fontWeight: item.fontWeight,
+            fontStyle: item.fontStyle,
+            fontFamily: item.fontFamily,
+            letterSpacing: item.letterSpacing,
+            opacity: item.opacity,
+            showStroke: item.showStroke,
+            strokeColor: item.strokeColor,
+            strokeWidth: item.strokeWidth,
+            showShadow: item.showShadow,
+            shadowColor: item.shadowColor,
+            shadowBlur: item.shadowBlur,
+            shadowOffset: item.shadowOffset,
+            fixedDuration: item.fixedDuration,
+            emojiSize: item.emojiSize,
+            baseSpeed: item.baseSpeed,
+            overlapSafeGap: item.overlapSafeGap,
+          )
+        : _config;
+    final fragments = _parser.parse(item.content);
+    _layout.layout(fragments, item: item, config: resolvedConfig);
+  }
+
+  void _dispatchWaiting(int now) {
+    final wallNow = DateTime.now().millisecondsSinceEpoch;
+    final maxAgeMs = _config.maxPendingAge.inMilliseconds.clamp(0, 600000);
+    while (_waiting.isNotEmpty && wallNow - _waiting.first.enqueuedAtMs > maxAgeMs) {
+      _waiting.removeFirst();
+    }
+    if (_waiting.isEmpty) return;
+    if (_currentAliveCount >= _config.maxVisibleCount) return;
+    final item = _waiting.first.item;
+    // copyWith allocates a whole new BarrageConfig (20+ fields). Most items
+    // in a real stream don't set any per-item style override, so skip the
+    // clone entirely and reuse the shared config in the common case.
+    final resolvedConfig = _itemHasConfigOverrides(item)
+        ? _config.copyWith(
+            textColor: item.textColor,
+            fontSize: item.fontSize,
+            fontWeight: item.fontWeight,
+            fontStyle: item.fontStyle,
+            fontFamily: item.fontFamily,
+            letterSpacing: item.letterSpacing,
+            opacity: item.opacity,
+            showStroke: item.showStroke,
+            strokeColor: item.strokeColor,
+            strokeWidth: item.strokeWidth,
+            showShadow: item.showShadow,
+            shadowColor: item.shadowColor,
+            shadowBlur: item.shadowBlur,
+            shadowOffset: item.shadowOffset,
+            fixedDuration: item.fixedDuration,
+            emojiSize: item.emojiSize,
+            baseSpeed: item.baseSpeed,
+            overlapSafeGap: item.overlapSafeGap,
+          )
+        : _config;
+    _trackManager.initialize(resolvedConfig, _calculateAllowedHeight(size.y));
+    if (_trackManager.tracks.isEmpty) return;
+    final fragments = _parser.parse(item.content);
+    final layoutResult = _layout.layout(fragments, item: item, config: resolvedConfig);
+    final mockEntry = _pool.obtain(item: item, creationTime: now)
+      ..width = layoutResult.width
+      ..height = layoutResult.height
+      ..lastUpdateTime = now
+      ..spawnTime = now
+      ..expireTime = now + resolvedConfig.fixedDurationMs;
+    mockEntry.speed = item.type == BarrageType.scroll ? resolvedConfig.baseSpeed : 0.0;
+    final trackIndex = _trackAllocator.allocate(
+      tracks: _trackManager.tracks,
+      current: mockEntry,
+      screenWidth: size.x,
+      config: resolvedConfig,
+    );
+    if (trackIndex == -1) {
+      _pool.recycle(mockEntry);
+      return;
+    }
+    _waiting.removeFirst();
+    final track = _trackManager.tracks[trackIndex];
+    if (item.type == BarrageType.scroll) {
+      mockEntry.speed = _speedStrategy.calculate(mockEntry, size.x, resolvedConfig, targetTrack: track);
+    }
+    track.lastLaunchTime = now;
+    final cacheKey = buildCacheKey(item);
+    CachedRender render = _renderCache.acquire(cacheKey) ?? _storeRender(cacheKey, item, layoutResult);
+    double startX = size.x;
+    double startY =
+        _getTopOffset() +
+        (trackIndex * resolvedConfig.trackHeight) +
+        (resolvedConfig.trackHeight - layoutResult.height) / 2;
+    if (item.type != BarrageType.scroll) {
+      track.locked = true;
+      track.lockedUntil = mockEntry.expireTime;
+      startX = (size.x - layoutResult.width) / 2;
+      if (item.type == BarrageType.bottomFixed) {
+        startY =
+            size.y -
+            _getBottomOffset() -
+            ((trackIndex + 1) * resolvedConfig.trackHeight) +
+            (resolvedConfig.trackHeight - layoutResult.height) / 2;
+      }
+    }
+    mockEntry.track = trackIndex;
+    mockEntry.x = startX;
+    mockEntry.y = startY;
+    mockEntry.render = render;
+    mockEntry.picture = render.picture;
+    mockEntry.active = true;
+    track.lastRight = startX + layoutResult.width;
+    track.lastEntry = mockEntry;
+    track.activeCount++;
+    _activeEntries.add(mockEntry);
+    _currentAliveCount++;
+  }
+
+  /// Transparent margin baked around every message. Strokes, glows and shadows
+  /// reach past the text bounds and must not be clipped by the bitmap edge;
+  /// this mirrors the allowance MixedRenderer keeps in its recording cull rect.
+  static const double _rasterPadding = 8.0;
+
+  /// Several TV GPUs refuse textures beyond this edge length. Longer messages
+  /// keep using the vector recording instead of vanishing.
+  static const double _maxRasterDimension = 4096.0;
+
+  /// Builds and caches the render for [layoutResult]. The returned reference is
+  /// owned by the caller and must be handed to [_releaseEntry] with its barrage.
+  CachedRender _storeRender(String cacheKey, BarrageItem item, LayoutResult layoutResult) {
+    final render = CachedRender(picture: _renderer.buildPicture(layoutResult));
+    _bakeRender(render, layoutResult.width, layoutResult.height);
+    return _renderCache.put(cacheKey, render);
+  }
+
+  /// Rasterizes [render] once so display frames only have to blit it.
+  ///
+  /// The picture is recorded into a device-pixel sized bitmap here, on the UI
+  /// thread, but `toImageSync` only creates a handle: the actual rasterization
+  /// happens on the raster thread, off the frame's critical path. Every message
+  /// that appears more than once — a repeated "666", a welcome template — then
+  /// costs one textured quad per frame instead of re-running its text, stroke,
+  /// shadow and emoji operations.
+  void _bakeRender(CachedRender render, double width, double height) {
+    if (!_config.rasterizeItems || !_renderCache.rasterizationSupported) return;
+    if (width <= 0 || height <= 0) return;
+
+    final double scale = _rasterScale;
+    final double paddedWidth = (width + _rasterPadding * 2) * scale;
+    final double paddedHeight = (height + _rasterPadding * 2) * scale;
+    if (paddedWidth > _maxRasterDimension || paddedHeight > _maxRasterDimension) return;
+
+    try {
+      final recorder = PictureRecorder();
+      final canvas = Canvas(recorder, Rect.fromLTWH(0, 0, paddedWidth, paddedHeight));
+      canvas.scale(scale);
+      canvas.translate(_rasterPadding, _rasterPadding);
+      canvas.drawPicture(render.picture);
+      final source = recorder.endRecording();
+      render.image = source.toImageSync(paddedWidth.ceil(), paddedHeight.ceil());
+      render.rasterSource = source;
+      render.padding = _rasterPadding;
+      render.rasterWidth = width + _rasterPadding * 2;
+      render.rasterHeight = height + _rasterPadding * 2;
+      render.rasterSrc = Rect.fromLTWH(0, 0, paddedWidth, paddedHeight);
+      render.oneToOne = scale == 1.0;
+    } catch (error) {
+      // Renderers without picture rasterization support (the HTML renderer, a
+      // few embedders) throw here. Stop attempting it entirely rather than
+      // paying for a failed try on every dispatched message.
+      _renderCache.rasterizationSupported = false;
+      render.image?.dispose();
+      render.image = null;
+      render.rasterSource?.dispose();
+      render.rasterSource = null;
+      BarrageLogger.w('Performance', '弹幕位图烘焙不可用，已回退到矢量绘制: $error');
+    }
+  }
+
+  /// Drops the entry's claim on its bitmap, then returns it to the pool. Safe to
+  /// call twice: the second call finds nothing left to release.
+  void _releaseEntry(BarrageEntry entry) {
+    final render = entry.render;
+    if (render != null) {
+      entry.render = null;
+      _renderCache.release(render);
+    }
+    _pool.recycle(entry);
+  }
+
+  // Reused across calls so the steady-state path (track count unchanged)
+  // does zero allocation. Reallocated only when the track count itself
+  // changes (resize / config change), which is rare compared to the ~31
+  // calls/sec this runs at. Allocating 3 fresh Lists every call was cheap
+  // enough to be invisible on a phone's GC but shows up as periodic stutter
+  // on weaker TV hardware.
+  List<double> _trackSpeedBuf = const [];
+  List<int> _trackCountBuf = const [];
+  List<BarrageEntry?> _trackYoungestBuf = const [];
+
+  void _updateTrackMetrics(int now) {
+    final tracks = _trackManager.tracks;
+    final trackCount = tracks.length;
+    if (trackCount == 0) return;
+
+    if (_trackSpeedBuf.length != trackCount) {
+      _trackSpeedBuf = List<double>.filled(trackCount, 0.0);
+      _trackCountBuf = List<int>.filled(trackCount, 0);
+      _trackYoungestBuf = List<BarrageEntry?>.filled(trackCount, null);
+    } else {
+      for (int t = 0; t < trackCount; t++) {
+        _trackSpeedBuf[t] = 0.0;
+        _trackCountBuf[t] = 0;
+        _trackYoungestBuf[t] = null;
+      }
+    }
+
+    final entryLen = _activeEntries.length;
+    for (int i = 0; i < entryLen; i++) {
+      final entry = _activeEntries[i];
+      if (!entry.active) continue;
+      final trackIndex = entry.track;
+      if (trackIndex < 0 || trackIndex >= trackCount) continue;
+
+      _trackSpeedBuf[trackIndex] += entry.speed;
+      _trackCountBuf[trackIndex]++;
+      final current = _trackYoungestBuf[trackIndex];
+      if (current == null || entry.x > current.x) {
+        _trackYoungestBuf[trackIndex] = entry;
+      }
+    }
+
+    final screenWidth = size.x;
+    for (int t = 0; t < trackCount; t++) {
+      final track = tracks[t];
+      final count = _trackCountBuf[t];
+      track.activeCount = count;
+      track.avgSpeed = count == 0 ? 0.0 : _trackSpeedBuf[t] / count;
+      track.density = screenWidth > 0 ? (count * 150.0) / screenWidth : 0.0;
+
+      final youngestEntry = _trackYoungestBuf[t];
+      if (youngestEntry != null) {
+        track.lastRight = youngestEntry.x + youngestEntry.width;
+        track.lastEntry = youngestEntry;
+      } else {
+        if (!track.locked) {
+          track.lastRight = 0.0;
+          track.lastEntry = null;
+        }
+        if (track.locked && now >= track.lockedUntil) {
+          track.locked = false;
+          track.lockedUntil = 0;
+          track.lastRight = 0.0;
+          track.lastEntry = null;
+        }
+      }
+    }
+  }
+
+  void recycleComponent(BarrageEntry entry) {
+    _releaseEntry(entry);
+  }
+
+  @override
+  void render(Canvas canvas) {
+    super.render(canvas);
+    if (!_initialized) return;
+    final int len = _activeEntries.length;
+    final Paint paint = _imagePaint;
+    // Text/emoji/sprite alpha is baked into each cached artifact by
+    // MixedLayout, and with rasterizeItems the whole message is a bitmap, so a
+    // frame only blits it. Replaying the vector recording instead re-runs every
+    // text, stroke, shadow and emoji op per display frame — stroked glyphs are
+    // re-tessellated on each of those replays, which is what makes a full
+    // screen of danmaku miss a 144 Hz deadline on TV-class hardware.
+    for (int i = 0; i < len; i++) {
+      final entry = _activeEntries[i];
+      if (!entry.active) continue;
+
+      final render = entry.render;
+      final image = render?.image;
+      if (image != null) {
+        final current = render!;
+        if (current.oneToOne) {
+          canvas.drawImage(image, Offset(entry.x - current.padding, entry.y - current.padding), paint);
+        } else {
+          canvas.drawImageRect(
+            image,
+            current.rasterSrc,
+            Rect.fromLTWH(
+              entry.x - current.padding,
+              entry.y - current.padding,
+              current.rasterWidth,
+              current.rasterHeight,
+            ),
+            paint,
+          );
+        }
+        continue;
+      }
+
+      final picture = entry.picture;
+      if (picture == null) continue;
+      canvas.save();
+      canvas.translate(entry.x, entry.y);
+      canvas.drawPicture(picture);
+      canvas.restore();
+    }
+  }
+
+  void clear() {
+    _stopFramePulses();
+    _waiting.clear();
+    // 清空暂停缓存
+    _pausedBuffer.clear();
+    _parser.clearCache();
+    _layout.clearCache();
+    for (var e in _activeEntries) {
+      _releaseEntry(e);
+    }
+    _renderCache.clear();
+    _activeEntries.clear();
+    _backbufferEntries.clear();
+    _pool.clear();
+    _currentAliveCount = 0;
+    _emitTimer = 0.0;
+    _metricTimer = 0.0;
+    _cleanupTimer = 0.0;
+    clock.reset();
+    for (final track in _trackManager.tracks) {
+      track.lastRight = 0.0;
+      track.lastEntry = null;
+      track.activeCount = 0;
+      track.locked = false;
+      track.lockedUntil = 0;
+    }
+  }
+
+  String buildCacheKey(BarrageItem item) {
+    // Runs once per dispatched item. A StringBuffer avoids allocating the
+    // intermediate List<Object> (with its boxed doubles/bools) that
+    // List.join would otherwise build just to throw away.
+    final buffer = StringBuffer()
+      ..write(item.content)
+      ..write('|')
+      ..write(item.type.name)
+      ..write('|')
+      ..write(item.fontSize ?? _config.fontSize)
+      ..write('|')
+      ..write(item.fontWeight ?? _config.fontWeight)
+      ..write('|')
+      ..write((item.fontStyle ?? _config.fontStyle).name)
+      ..write('|')
+      ..write((item.textColor ?? _config.textColor).toARGB32())
+      ..write('|')
+      ..write(item.emojiSize ?? _config.emojiSize)
+      ..write('|')
+      ..write(item.fontFamily ?? _config.fontFamily ?? '')
+      ..write('|')
+      ..write(item.letterSpacing ?? _config.letterSpacing)
+      ..write('|')
+      ..write(item.showStroke ?? _config.showStroke)
+      ..write('|')
+      ..write(item.strokeWidth ?? _config.strokeWidth)
+      ..write('|')
+      ..write((item.strokeColor ?? _config.strokeColor).toARGB32())
+      ..write('|')
+      ..write(item.showShadow ?? _config.showShadow)
+      ..write('|')
+      ..write((item.shadowColor ?? _config.shadowColor).toARGB32())
+      ..write('|')
+      ..write(item.shadowBlur ?? _config.shadowBlur)
+      ..write('|')
+      ..write(item.shadowOffset ?? _config.shadowOffset)
+      ..write('|')
+      ..write(item.opacity ?? _config.opacity)
+      ..write('|')
+      ..write(item.fixedDuration ?? _config.fixedDuration)
+      ..write('|')
+      ..write(_config.noEmojiMode);
+    return buffer.toString();
+  }
+
+  @override
+  void onRemove() {
+    clear();
+    _frameTicker?.dispose();
+    _frameTicker = null;
+    super.onRemove();
+  }
+
+  @override
+  void lifecycleStateChange(AppLifecycleState state) {
+    // The custom pulse driver owns scheduling, so do not let Flame restart its
+    // display-rate ticker when the app resumes.
+    super.lifecycleStateChange(state);
+    pauseEngine();
+    _appActive = state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
+    if (_appActive) {
+      _resumeLoopIfNeeded();
+    } else {
+      _stopFramePulses();
+    }
+  }
+
+  int get activeCacheSize => _renderCache.size;
+
+  /// Number of messages currently on screen, which is what a frame pays for.
+  int get activeCount => _currentAliveCount;
+
+  /// Approximate GPU memory held by the cached message bitmaps, in bytes.
+  int get rasterCacheBytes => _renderCache.byteSize;
+
+  /// Whether messages are currently rasterized instead of replayed as vectors.
+  bool get rasterizationActive => _config.rasterizeItems && _renderCache.rasterizationSupported;
+
+  int get activePoolSize => _pool.currentSize;
+  int get pendingMessageCount => _waiting.length + _pausedBuffer.length;
+  int get parserCacheSize => _parser.cacheCount;
+  int get layoutCacheSize => _layout.cacheCount;
+  bool get framePulseActive => _frameTicker?.isActive == true;
+  int get frameStepCount => _frameStepCount;
+}

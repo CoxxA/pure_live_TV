@@ -47,7 +47,7 @@ abstract class _$TvSearchNotifier extends $Notifier<TvSearchState> {
   TvSearchState build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<TvSearchState, TvSearchState>;
     final element =
         ref.element
@@ -57,6 +57,6 @@ abstract class _$TvSearchNotifier extends $Notifier<TvSearchState> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

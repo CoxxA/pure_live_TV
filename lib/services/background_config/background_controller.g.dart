@@ -81,7 +81,7 @@ abstract class _$BackgroundController extends $Notifier<BackgroundConfigModel> {
   BackgroundConfigModel build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<BackgroundConfigModel, BackgroundConfigModel>;
     final element =
         ref.element
@@ -91,6 +91,6 @@ abstract class _$BackgroundController extends $Notifier<BackgroundConfigModel> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

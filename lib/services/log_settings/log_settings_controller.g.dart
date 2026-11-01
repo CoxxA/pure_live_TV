@@ -48,7 +48,7 @@ abstract class _$LogSettingsController extends $Notifier<LogSettingsModel> {
   LogSettingsModel build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<LogSettingsModel, LogSettingsModel>;
     final element =
         ref.element
@@ -58,6 +58,6 @@ abstract class _$LogSettingsController extends $Notifier<LogSettingsModel> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

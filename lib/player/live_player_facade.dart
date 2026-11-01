@@ -13,7 +13,6 @@ import '../app/consts/app_theme_consts.dart';
 import '../shared/models/live_room/live_room.dart';
 import 'package:media_core_media_kit/media_core_media_kit.dart';
 import 'package:media_core_ijk_player/media_core_ijk_player.dart';
-import 'package:media_core_better_player/media_core_video_player.dart';
 
 /// App-facing facade over media_core's [LivePlaybackController].
 ///
@@ -31,8 +30,12 @@ import 'package:media_core_better_player/media_core_video_player.dart';
 /// ```
 final class LivePlayerFacade {
   /// Creates the facade.
-  LivePlayerFacade(PlayerKernel kernel, {required PlayerEngine defaultEngine, this._onPreferredEngineChanged})
-    : preferredEngine = defaultEngine {
+  LivePlayerFacade(
+    PlayerKernel kernel, {
+    required PlayerEngine defaultEngine,
+    void Function(PlayerEngine engine)? onPreferredEngineChanged,
+  }) : _onPreferredEngineChanged = onPreferredEngineChanged,
+       preferredEngine = defaultEngine {
     _controller = LivePlaybackController(kernel, onEngineFallbackSources: _refreshEngineFallbackSources);
 
     // The app lifecycle is the source of truth the handle's lifecycle
@@ -241,7 +244,7 @@ final class LivePlayerFacade {
   String _startBackendFor(List<String> urls) {
     final preferred = _backendIdOf(preferredEngine);
 
-    if (preferred == BackendIds.mediaKit || preferred == BackendIds.fvp) {
+    if (preferred == BackendIds.mediaKit) {
       return preferred;
     }
 
@@ -677,9 +680,8 @@ final class LivePlayerFacade {
   ///
   /// [isAudioOnlySubject] is the surface the UI listens to: the audio-only
   /// panel replaces the video surface on the play page, and it has to
-  /// appear even when the active engine cannot switch its video track off
-  /// (see `BetterPlayerAdapter`). The track switch itself is the
-  /// controller's business — it stores the preference, applies it to the
+  /// appear consistently while the controller switches the active track.
+  /// The track switch itself is the controller's business — it stores the preference, applies it to the
   /// adapter that declares [PlayerAdapterCapabilities.supportsAudioOnly],
   /// and re-applies it whenever a new adapter is bound.
   Future<void> setAudioOnly(bool audioOnly) async {
@@ -774,16 +776,10 @@ final class LivePlayerFacade {
 
   /// The backend id [engine] is registered under.
   ///
-  /// Exhaustive over [PlayerEngine] on purpose: a `default:` branch is how
-  /// `fvp` silently became `mpv` — the setting was stored and passed along
-  /// correctly, and then the last conversion turned "fvp" into "mpv". A switch
-  /// expression over the enum without a default makes the next engine a
-  /// compile error instead.
+  /// Exhaustive over the engines shipped in the Android 5 build.
   String _backendIdOf(PlayerEngine engine) => switch (engine) {
     PlayerEngine.mediaKit => BackendIds.mediaKit,
     PlayerEngine.fijk => BackendIds.fijk,
-    PlayerEngine.betterPlayer => BackendIds.betterPlayer,
-    PlayerEngine.fvp => BackendIds.fvp,
   };
 
   /// Returns the engine currently in use.
@@ -793,8 +789,6 @@ final class LivePlayerFacade {
   /// reported as media_kit while it played.
   PlayerEngine get currentEngine => switch (_controller.backendId) {
     BackendIds.fijk => PlayerEngine.fijk,
-    BackendIds.betterPlayer => PlayerEngine.betterPlayer,
-    BackendIds.fvp => PlayerEngine.fvp,
     _ => PlayerEngine.mediaKit,
   };
 
@@ -831,9 +825,6 @@ final class LivePlayerFacade {
       return;
     }
 
-    if (adapter is BetterPlayerAdapter) {
-      adapter.setVideoFit(fit);
-    }
   }
 
   // ---------------------------------------------------------------------------

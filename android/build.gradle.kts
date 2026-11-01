@@ -56,7 +56,7 @@ subprojects {
     afterEvaluate {
         if (project.name != "app") {
             extensions.findByType(com.android.build.gradle.BaseExtension::class.java)?.apply {
-                compileSdkVersion(37)
+                compileSdkVersion(35)
                 if (namespace.isNullOrBlank()) {
                     namespace = project.group.toString()
                 }

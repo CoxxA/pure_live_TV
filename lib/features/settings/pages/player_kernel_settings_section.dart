@@ -14,7 +14,7 @@ import 'package:pure_live/shared/i18n/locale_helper.dart';
 /// Row-for-row the same as the mobile page
 /// (`pure_live/lib/modules/settings/pages/player_kernel_settings_page.dart:31-155`):
 ///
-/// 1. core — engine switch -> proxy settings (hidden for the Exo engine) ->
+/// 1. core — engine switch -> proxy settings ->
 ///    enable hw decode -> [RTX VSR: Windows-only, not wanted here] -> force destroy
 /// 2. MPV only - compat mode (Android) -> advanced heading -> the warning/docs/reset
 ///    cluster → custom driver & hardware accel → hardware decoder(--hwdec) → video output driver(--vo)
@@ -41,7 +41,6 @@ class PlayerKernelSettingsSectionPage extends ConsumerWidget {
         ? playerState.videoPlayerKey
         : PlayerConsts.defaultKey;
     final bool isMpv = activeEngineKey == PlayerConsts.defaultKey;
-    final bool isExo = activeEngineKey == BackendIds.betterPlayer;
     final bool proxyEnabled = SettingsService.to.proxyState.enableProxy;
     final bool customOutput = playerState.customPlayerOutput;
 
@@ -59,9 +58,7 @@ class PlayerKernelSettingsSectionPage extends ConsumerWidget {
               index: engineKeys.indexOf(activeEngineKey).clamp(0, engineKeys.length - 1),
               onChanged: (index) => _selectEngine(ref, engineKeys[index]),
             ),
-            // The reference hides this row for the Exo kernel, which has no
-            // proxy support; everything but Exo keeps it in second position.
-            if (!isExo)
+            // Both engines shipped in this build support the proxy policy.
               TvSettingsNavTile(
                 title: i18n('network_proxy'),
                 subtitle: i18n('network_proxy_subtitle'),

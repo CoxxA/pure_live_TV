@@ -44,7 +44,7 @@ final class CookieControllerProvider
   }
 }
 
-String _$cookieControllerHash() => r'66b00b1560b184b7a24f68aa1cb424adc0eddf94';
+String _$cookieControllerHash() => r'c4c8dfb9cd9fc4f51a776521c244b88c5acb9d49';
 
 /// Normalizes and validates per-platform cookie values.
 
@@ -52,7 +52,7 @@ abstract class _$CookieController extends $Notifier<CookieModel> {
   CookieModel build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<CookieModel, CookieModel>;
     final element =
         ref.element
@@ -62,6 +62,6 @@ abstract class _$CookieController extends $Notifier<CookieModel> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

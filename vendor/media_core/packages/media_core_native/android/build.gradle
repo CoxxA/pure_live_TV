@@ -1,0 +1,39 @@
+group 'com.mediacore.nativeprobe'
+version '1.0'
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.7.3'
+    }
+}
+
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+apply plugin: 'com.android.library'
+
+android {
+    namespace 'com.mediacore.nativeprobe'
+
+    compileSdkVersion 35
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    defaultConfig {
+        // MediaCodecList.isHardwareAccelerated needs API 29 and is guarded;
+        // everything else the probe reads exists from API 21 on.
+        minSdkVersion 21
+    }
+}

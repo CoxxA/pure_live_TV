@@ -118,7 +118,7 @@ abstract class _$PagingCore<T> extends $Notifier<BasePagedState<T>> {
   BasePagedState<T> build(PagingParam<T> pParam);
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<BasePagedState<T>, BasePagedState<T>>;
     final element =
         ref.element
@@ -128,6 +128,6 @@ abstract class _$PagingCore<T> extends $Notifier<BasePagedState<T>> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, () => build(_$args));
+    element.handleCreate(ref, () => build(_$args));
   }
 }

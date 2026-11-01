@@ -60,6 +60,10 @@ class PlayerSettingsController extends _$PlayerSettingsController {
   /// would stop matching the qualities a site returns after a language change.
   static PlayerSettingsModel _normalize(PlayerSettingsModel model) {
     return model.copyWith(
+      // Backups from the full build may select an engine omitted here.
+      videoPlayerKey: PlayerConsts.engineConfigs.containsKey(model.videoPlayerKey)
+          ? model.videoPlayerKey
+          : PlayerConsts.defaultKey,
       videoFitIndex: normalizeVideoFitIndex(model.videoFitIndex),
       preferResolution: PlayerConsts.normalizeResolutionKey(model.preferResolution),
       preferResolutionCellular: PlayerConsts.normalizeResolutionKey(model.preferResolutionCellular),

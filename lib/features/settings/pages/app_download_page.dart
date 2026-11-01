@@ -28,7 +28,9 @@ class AppDownloadPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(appUpdateControllerProvider);
     final controller = ref.read(appUpdateControllerProvider.notifier);
-    final useOrigin = ref.watch(appSettingsControllerProvider).useGitHubOriginForUpdates;
+    final useOrigin = ref
+        .watch(appSettingsControllerProvider)
+        .useGitHubOriginForUpdates;
 
     return TvPageScaffold(
       title: i18n('version_update'),
@@ -47,10 +49,16 @@ class AppDownloadPage extends ConsumerWidget {
                       Container(
                         padding: EdgeInsets.all(10.sp),
                         decoration: BoxDecoration(
-                          color: context.tvTheme.focusColor.withValues(alpha: 0.12),
+                          color: context.tvTheme.focusColor.withValues(
+                            alpha: 0.12,
+                          ),
                           borderRadius: BorderRadius.circular(12.sp),
                         ),
-                        child: Icon(Icons.android_rounded, color: context.tvTheme.focusColor, size: 28.sp),
+                        child: Icon(
+                          Icons.android_rounded,
+                          color: context.tvTheme.focusColor,
+                          size: 28.sp,
+                        ),
                       ),
                       SizedBox(width: 14.sp),
                       Expanded(
@@ -61,7 +69,10 @@ class AppDownloadPage extends ConsumerWidget {
                             SizedBox(height: 2.sp),
                             Text(
                               i18n('android_desc'),
-                              style: TextStyle(fontSize: 15.sp, color: context.tvTheme.secondaryTextColor),
+                              style: TextStyle(
+                                fontSize: 15.sp,
+                                color: context.tvTheme.secondaryTextColor,
+                              ),
                             ),
                           ],
                         ),
@@ -69,25 +80,22 @@ class AppDownloadPage extends ConsumerWidget {
                     ],
                   ),
                 ),
-                // Renderer variant picker: the dual-variant releases publish
-                // Impeller and Skia APKs per ABI; the choice persists and the
-                // The source buttons below resolve to the selected variant.
+                // Android 5 packages use the legacy renderer for every ABI.
                 Padding(
                   padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 4.h),
                   child: Row(
                     children: <Widget>[
-                      Icon(Icons.layers_rounded, size: 20.sp, color: context.tvTheme.secondaryTextColor),
-                      SizedBox(width: 10.sp),
-                      Text(i18n('update_renderer'), style: AppTextStyles.t18W600),
-                      SizedBox(width: 16.sp),
-                      TvButton(
-                        title: i18n('update_renderer_impeller'),
-                        size: TvButtonSize.small,
-                        selected: state.rendererVariant != 'skia',
-                        icon: Icon(Icons.bolt_rounded, size: 18.sp),
-                        onTap: () => controller.pickRenderer('impeller'),
+                      Icon(
+                        Icons.layers_rounded,
+                        size: 20.sp,
+                        color: context.tvTheme.secondaryTextColor,
                       ),
-                      SizedBox(width: 12.sp),
+                      SizedBox(width: 10.sp),
+                      Text(
+                        i18n('update_renderer'),
+                        style: AppTextStyles.t18W600,
+                      ),
+                      SizedBox(width: 16.sp),
                       TvButton(
                         title: i18n('update_renderer_skia'),
                         size: TvButtonSize.small,
@@ -98,35 +106,43 @@ class AppDownloadPage extends ConsumerWidget {
                     ],
                   ),
                 ),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(20.w, 2.h, 20.w, 4.h),
-                  child: Text(
-                    i18n('update_renderer_desc'),
-                    style: TextStyle(fontSize: 14.sp, color: context.tvTheme.secondaryTextColor),
-                  ),
-                ),
                 // One section per published ABI, the mobile update page's
                 // per-architecture download groups.
                 for (final String abi in state.abis)
                   _AbiDownloadSection(
                     abi: abi,
                     sizeText: controller.assetSizeFor(abi),
-                    sources: _sourcesFor(context, ref, controller, abi, useOrigin),
+                    sources: _sourcesFor(
+                      context,
+                      ref,
+                      controller,
+                      abi,
+                      useOrigin,
+                    ),
                     useOrigin: useOrigin,
                   ),
                 if (state.abis.isEmpty)
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 20.w,
+                      vertical: 12.h,
+                    ),
                     child: Text(
                       state.phase == AppUpdatePhase.checking
                           ? i18n('check_update')
                           : i18n('already_latest_version'),
-                      style: TextStyle(fontSize: 15.sp, color: context.tvTheme.secondaryTextColor),
+                      style: TextStyle(
+                        fontSize: 15.sp,
+                        color: context.tvTheme.secondaryTextColor,
+                      ),
                     ),
                   ),
                 if (state.phase == AppUpdatePhase.readyToInstall)
                   Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 20.w,
+                      vertical: 12.h,
+                    ),
                     child: Row(
                       children: <Widget>[
                         TvButton(
@@ -139,20 +155,27 @@ class AppDownloadPage extends ConsumerWidget {
                         Expanded(
                           child: Text(
                             i18n('update_package_ready'),
-                            style: TextStyle(fontSize: 14.sp, color: context.tvTheme.secondaryTextColor),
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              color: context.tvTheme.secondaryTextColor,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                if (state.error.isNotEmpty && state.phase != AppUpdatePhase.failed)
+                if (state.error.isNotEmpty &&
+                    state.phase != AppUpdatePhase.failed)
                   Padding(
                     padding: EdgeInsets.fromLTRB(20.w, 4.h, 20.w, 12.h),
                     child: Text(
                       state.error,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 14.sp, color: context.tvTheme.secondaryTextColor),
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        color: context.tvTheme.secondaryTextColor,
+                      ),
                     ),
                   ),
               ],
@@ -163,7 +186,10 @@ class AppDownloadPage extends ConsumerWidget {
             TvSettingsCard(
               children: <Widget>[
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 16.h),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 24.w,
+                    vertical: 16.h,
+                  ),
                   child: _ReleaseNotesMarkdown(state: state),
                 ),
               ],
@@ -188,7 +214,11 @@ class AppDownloadPage extends ConsumerWidget {
     final String? origin = controller.resolveAssetUrl(abi);
     if (origin == null || !origin.startsWith('http')) return const <String>[];
     if (useOrigin) return <String>[origin];
-    return <String>[for (final String mirror in AppUpdateController.assetMirrors) '$mirror$origin', origin];
+    return <String>[
+      for (final String mirror in AppUpdateController.assetMirrors)
+        '$mirror$origin',
+      origin,
+    ];
   }
 }
 
@@ -217,12 +247,22 @@ class _AbiDownloadSection extends ConsumerWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              Icon(Icons.memory_rounded, size: 20.sp, color: tvTheme.secondaryTextColor),
+              Icon(
+                Icons.memory_rounded,
+                size: 20.sp,
+                color: tvTheme.secondaryTextColor,
+              ),
               SizedBox(width: 10.sp),
               Text(_abiLabel(abi), style: AppTextStyles.t18W600),
               if (sizeText != null && sizeText!.isNotEmpty) ...<Widget>[
                 SizedBox(width: 12.sp),
-                Text(sizeText!, style: TextStyle(fontSize: 14.sp, color: tvTheme.secondaryTextColor)),
+                Text(
+                  sizeText!,
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    color: tvTheme.secondaryTextColor,
+                  ),
+                ),
               ],
             ],
           ),
@@ -233,10 +273,12 @@ class _AbiDownloadSection extends ConsumerWidget {
             children: <Widget>[
               for (int i = 0; i < sources.length; i++)
                 TvButton(
-                  title: useOrigin ? i18n('github_origin_source') : i18n('download_source', args: {'num': '${i + 1}'}),
+                  title: useOrigin
+                      ? i18n('github_origin_source')
+                      : i18n('download_source', args: {'num': '${i + 1}'}),
                   size: TvButtonSize.small,
                   icon: Icon(Remix.link, size: 18.sp),
-                  onTap: () => _startDownload(context, sources[i]),
+                  onTap: () => _startDownload(context, ref, sources[i]),
                 ),
             ],
           ),
@@ -249,7 +291,8 @@ class _AbiDownloadSection extends ConsumerWidget {
   /// opens on that URL — with the other mirrors kept as fallback by the
   /// controller — and carries the progress, the cancel and the install action
   /// itself, so the page keeps no transfer state of its own.
-  void _startDownload(BuildContext context, String url) {
+  void _startDownload(BuildContext context, WidgetRef ref, String url) {
+    ref.read(appUpdateControllerProvider.notifier).pickAbi(abi);
     showDownloadApkDialog(context: context, url: url, preferGivenUrl: true);
   }
 
@@ -274,22 +317,47 @@ class _ReleaseNotesMarkdown extends ConsumerWidget {
     if (markdown.isEmpty) {
       return Text(
         i18n('update_no_notes'),
-        style: TextStyle(fontSize: 15.sp, color: context.tvTheme.secondaryTextColor),
+        style: TextStyle(
+          fontSize: 15.sp,
+          color: context.tvTheme.secondaryTextColor,
+        ),
       );
     }
 
     final tvTheme = context.tvTheme;
-    final MarkdownConfig baseConfig = tvTheme.isLight ? MarkdownConfig.defaultConfig : MarkdownConfig.darkConfig;
+    final MarkdownConfig baseConfig = tvTheme.isLight
+        ? MarkdownConfig.defaultConfig
+        : MarkdownConfig.darkConfig;
     final Color ink = tvTheme.primaryTextColor;
 
     return MarkdownBlock(
       data: markdown,
       config: baseConfig.copy(
         configs: [
-          PConfig(textStyle: TextStyle(fontSize: 17.sp, height: 1.5, color: ink)),
-          H1Config(style: TextStyle(fontSize: 25.sp, fontWeight: FontWeight.bold, color: ink)),
-          H2Config(style: TextStyle(fontSize: 22.sp, fontWeight: FontWeight.bold, color: ink)),
-          H3Config(style: TextStyle(fontSize: 19.sp, fontWeight: FontWeight.bold, color: ink)),
+          PConfig(
+            textStyle: TextStyle(fontSize: 17.sp, height: 1.5, color: ink),
+          ),
+          H1Config(
+            style: TextStyle(
+              fontSize: 25.sp,
+              fontWeight: FontWeight.bold,
+              color: ink,
+            ),
+          ),
+          H2Config(
+            style: TextStyle(
+              fontSize: 22.sp,
+              fontWeight: FontWeight.bold,
+              color: ink,
+            ),
+          ),
+          H3Config(
+            style: TextStyle(
+              fontSize: 19.sp,
+              fontWeight: FontWeight.bold,
+              color: ink,
+            ),
+          ),
         ],
       ),
     );
@@ -298,10 +366,12 @@ class _ReleaseNotesMarkdown extends ConsumerWidget {
   /// The manifest's raw update log first, the matching history entry second,
   /// the stripped plain-text preview last.
   String _resolveMarkdown() {
-    if (state.changelogMarkdown.trim().isNotEmpty) return state.changelogMarkdown;
+    if (state.changelogMarkdown.trim().isNotEmpty)
+      return state.changelogMarkdown;
     for (final ReleaseModel release in state.history) {
       if (release.version == state.latestVersion ||
-          release.version.replaceFirst(RegExp('^[vV]'), '') == state.latestVersion) {
+          release.version.replaceFirst(RegExp('^[vV]'), '') ==
+              state.latestVersion) {
         if (release.changeLog.trim().isNotEmpty) return release.changeLog;
       }
     }

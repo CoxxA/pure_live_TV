@@ -34,15 +34,15 @@ class IptvImportManager {
 
   /// 1. Import by picking a local file.
   Future<bool> importFromLocalPicker() async {
-    final result = await FilePicker.pickFile(
+    final result = await FilePicker.platform.pickFiles(
       dialogTitle: i18n("select_recover_file"),
       type: FileType.custom,
       allowedExtensions: ['m3u', 'm3u8', 'txt'],
     );
 
-    if (result?.path == null) return false;
+    if (result == null || result.files.isEmpty || result.files.single.path == null) return false;
 
-    final file = File(result!.path!);
+    final file = File(result.files.single.path!);
     final name = FileUtils.getBaseName(file.path);
     return await importIptvFile(file: file, providerName: name);
   }

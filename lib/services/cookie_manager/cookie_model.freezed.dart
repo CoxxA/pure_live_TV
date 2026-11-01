@@ -15,7 +15,15 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CookieModel {
 
- String get bilibiliCookie; int get bilibiliUid; String get huyaCookie; String get douyuCookie; String get douyuLtp0; String get douyuDid; int get douyuCookieSavedAt; bool get douyuForceRenewal; String get douyinCookie; String get kuaishouCookie; String get yyCookie; String get soopCookie; String get twitchCookie;
+ String get bilibiliCookie; int get bilibiliUid; String get huyaCookie; String get douyuCookie;// Renewal credentials for the Douyu session (see DouyuUtils): they come
+// from the passport request, not the page cookie, so they live next to it.
+ String get douyuLtp0; String get douyuDid;// Kept for backup compatibility: the seven-day rule it used to feed was
+// replaced by reading the JWT, but old backups still carry the field.
+ int get douyuCookieSavedAt;// Whether playback renews a Douyu FLV that states no lease before the CDN
+// closes it. A signed-in session's link carries `expire=0` while Douyu still
+// cuts it on its own schedule, so the renewed stream is opt-in from the
+// cookie page: anonymous links already say `expire=300` and need no switch.
+ bool get douyuForceRenewal; String get douyinCookie; String get kuaishouCookie; String get yyCookie; String get soopCookie; String get twitchCookie;
 /// Create a copy of CookieModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -228,9 +236,17 @@ class _CookieModel implements CookieModel {
 @override@JsonKey() final  int bilibiliUid;
 @override@JsonKey() final  String huyaCookie;
 @override@JsonKey() final  String douyuCookie;
+// Renewal credentials for the Douyu session (see DouyuUtils): they come
+// from the passport request, not the page cookie, so they live next to it.
 @override@JsonKey() final  String douyuLtp0;
 @override@JsonKey() final  String douyuDid;
+// Kept for backup compatibility: the seven-day rule it used to feed was
+// replaced by reading the JWT, but old backups still carry the field.
 @override@JsonKey() final  int douyuCookieSavedAt;
+// Whether playback renews a Douyu FLV that states no lease before the CDN
+// closes it. A signed-in session's link carries `expire=0` while Douyu still
+// cuts it on its own schedule, so the renewed stream is opt-in from the
+// cookie page: anonymous links already say `expire=300` and need no switch.
 @override@JsonKey() final  bool douyuForceRenewal;
 @override@JsonKey() final  String douyinCookie;
 @override@JsonKey() final  String kuaishouCookie;

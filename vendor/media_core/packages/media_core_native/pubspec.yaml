@@ -1,0 +1,48 @@
+name: media_core_native
+
+description: Native platform capability probe for media_core - codec support, device facts and system features, asked once and carried into every session.
+
+publish_to: none
+
+version: 0.2.0
+
+
+environment:
+  sdk: ">=3.8.1 <4.0.0"
+  flutter: ">=3.32.8"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  plugin_platform_interface: ^2.1.8
+
+  # The vocabulary the probe answers in: PlatformCapabilities,
+  # PlatformDeviceProfile, PlatformCodecCapabilities.
+  media_core:
+    path: ../media_core
+
+flutter:
+  plugin:
+    platforms:
+      # Android: MediaCodecList, ActivityManager, DisplayManager.
+      android:
+        package: com.mediacore.nativeprobe
+        pluginClass: MediaCoreNativePlugin
+      # Windows: MFTEnumEx, DXGI, GlobalMemoryStatusEx.
+      #
+      # The C API entry point, not the C++ class: Flutter's generated Windows
+      # registrant derives the symbol *and* the header name from this value, and
+      # only `include/media_core_native/media_core_native_plugin_c_api.h` is
+      # exported. Same choice as media_core_audio.
+      windows:
+        pluginClass: MediaCoreNativePluginCApi
+      # Linux: /proc, /sys/class/drm, /dev/dri.
+      linux:
+        pluginClass: MediaCoreNativePlugin
+      # macOS: VideoToolbox, NSScreen, sysctl.
+      macos:
+        pluginClass: MediaCoreNativePlugin
+      # iOS: VideoToolbox, AVPictureInPicture, UIScreen.
+      ios:
+        pluginClass: MediaCoreNativePlugin

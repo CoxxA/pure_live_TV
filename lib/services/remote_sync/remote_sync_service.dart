@@ -13,6 +13,7 @@ import 'package:pure_live/services/backup/backup_controller.dart';
 import 'package:pure_live/shared/dialog/backup_import_dialog.dart';
 import 'package:pure_live/services/remote_sync/remote_sync_device.dart';
 import 'package:pure_live/services/remote_sync/remote_sync_protocol.dart';
+import 'package:pure_live/services/remote_sync/remote_sync_address.dart';
 import 'package:pure_live/shared/platform/local_network_access.dart';
 
 part 'remote_sync_service.g.dart';
@@ -74,6 +75,7 @@ class RemoteSyncController extends _$RemoteSyncController {
 
   final List<RemoteSyncDevice> _devices = [];
   final Set<String> _localIps = {};
+  final Map<String, Object> _serviceLookups = {};
 
   String _deviceId = '';
   String _localIp = '';
@@ -158,6 +160,7 @@ class RemoteSyncController extends _$RemoteSyncController {
   Future<void> stop() async {
     debugPrint('[sync] stop() called, running=$_running');
     _running = false;
+    _serviceLookups.clear();
     _pairingCode = '';
 
     _cleanupTimer?.cancel();
@@ -280,11 +283,6 @@ class RemoteSyncController extends _$RemoteSyncController {
       if (s != null && s >= 16 && s <= 31) return 1;
     }
     return 0;
-  }
-
-  String? _ipv4Prefix(String ip) {
-    final p = ip.split('.');
-    return p.length == 4 ? '${p[0]}.${p[1]}.${p[2]}' : null;
   }
 
   // ---------------------------------------------------------------------------
@@ -512,7 +510,7 @@ class RemoteSyncController extends _$RemoteSyncController {
       case BonsoirDiscoveryServiceFoundEvent():
         final service = event.service;
         if (_isSelf(service)) return;
-        _addOrUpdate(service);
+        await _addOrUpdate(service);
         final resolver = _discovery?.serviceResolver;
         if (resolver != null) {
           try {
@@ -523,7 +521,7 @@ class RemoteSyncController extends _$RemoteSyncController {
       case BonsoirDiscoveryServiceUpdatedEvent():
         final service = event.service;
         if (service == null || _isSelf(service)) return;
-        _addOrUpdate(service);
+        await _addOrUpdate(service);
       case BonsoirDiscoveryServiceLostEvent():
         _remove(event.service);
       default:
@@ -538,13 +536,17 @@ class RemoteSyncController extends _$RemoteSyncController {
     return ip != null && ip.isNotEmpty && _localIps.contains(ip);
   }
 
-  void _addOrUpdate(BonsoirService service) {
+  Future<void> _addOrUpdate(BonsoirService service) async {
     final attrs = service.attributes;
     final id = attrs['id']?.trim() ?? '';
     if (id.isEmpty || id == _deviceId) return;
 
     final name = (attrs['name']?.trim().isNotEmpty == true) ? attrs['name']!.trim() : service.name;
-    final ip = _selectIp(service) ?? attrs['ip']?.trim();
+    final lookup = Object();
+    _serviceLookups[service.name] = lookup;
+    final ip = await resolveRemoteSyncIpv4(host: service.host, localIp: _localIp, advertisedIp: attrs['ip']);
+    if (_disposed || !_running || !identical(_serviceLookups[service.name], lookup)) return;
+    _serviceLookups.remove(service.name);
     if (ip == null || !_isValidIpv4(ip)) return;
     final port = service.port > 0 ? service.port : RemoteSyncProtocol.defaultHttpPort;
 
@@ -576,6 +578,7 @@ class RemoteSyncController extends _$RemoteSyncController {
   }
 
   void _remove(BonsoirService service) {
+    _serviceLookups.remove(service.name);
     final id = service.attributes['id']?.trim();
     final before = _devices.length;
     if (id != null && id.isNotEmpty) {
@@ -584,24 +587,6 @@ class RemoteSyncController extends _$RemoteSyncController {
       _devices.removeWhere((d) => d.bonsoirName == service.name);
     }
     if (_devices.length != before) _publish();
-  }
-
-  String? _selectIp(BonsoirService service) {
-    final addresses = service.hostAddresses.where(_isValidIpv4).toList();
-    if (addresses.isNotEmpty) {
-      final prefix = _ipv4Prefix(_localIp);
-      if (prefix != null) {
-        for (final ip in addresses) {
-          if (_ipv4Prefix(ip) == prefix) return ip;
-        }
-      }
-      for (final ip in addresses) {
-        if (_isPrivateIpv4(ip)) return ip;
-      }
-      return addresses.first;
-    }
-    final advertised = service.attributes['ip']?.trim();
-    return (advertised != null && _isValidIpv4(advertised)) ? advertised : null;
   }
 
   Future<void> _startBroadcast() async {

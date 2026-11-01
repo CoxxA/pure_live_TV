@@ -1,0 +1,31 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+      The probe only reads: codec lists, memory, features, displays. It declares
+      no permission, because asking for one to describe a device would be asking
+      the user for something the answer does not need.
+    -->
+
+    <!--
+      Background execution (a recording or a download that must survive the app
+      going to the background): a foreground service keeps the process from
+      being frozen, and the wake lock keeps the CPU running with the screen off.
+      A plain <service> merges from a library manifest, so the app inherits both
+      without copying anything, and POST_NOTIFICATIONS is asked for by this
+      plugin on the first acquire that needs it (BackgroundExecutionDelegate
+      requests it while an activity is attached) — an app that would rather ask
+      itself can, and the plugin then finds the permission already granted.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application>
+        <!-- Fully qualified on purpose: a relative name in a library manifest
+             resolves against the app's package, not this one. -->
+        <service
+            android:name="com.mediacore.nativeprobe.BackgroundExecutionService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+    </application>
+</manifest>

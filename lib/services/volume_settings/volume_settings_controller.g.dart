@@ -49,7 +49,7 @@ abstract class _$VolumeSettingsController
   VolumeSettingsModel build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<VolumeSettingsModel, VolumeSettingsModel>;
     final element =
         ref.element
@@ -59,6 +59,6 @@ abstract class _$VolumeSettingsController
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

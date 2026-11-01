@@ -1,0 +1,20 @@
+name: media_core_memory
+description: Memory accounting for media_core - per-module reported footprint, budget thresholds with pressure levels, device snapshots and reports.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ">=3.8.1 <4.0.0"
+  flutter: ">=3.32.8"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Pressure transitions and reports are logged under the memory category
+  media_core_logging:
+    path: ../media_core_logging
+
+  # Value equality for snapshots and reports
+  equatable: ^2.0.7
+

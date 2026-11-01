@@ -6,10 +6,11 @@ import 'package:pure_live/shared/platform/race_http.dart';
 import 'package:pure_live/services/settings/settings.dart';
 import 'package:pure_live/shared/utils/githup_mirror.dart';
 import 'package:pure_live/shared/utils/platform_utils.dart';
+import 'package:pure_live/shared/utils/android5_update_policy.dart';
 
 /// Download URLs assembled from the release identity itself, following the
 /// names the Android release workflow uploads:
-/// `{projectUrl}/releases/download/v{version}/PureLive-TV-{abi}-{renderer}.apk`.
+/// `{projectUrl}/releases/download/v{version}/PureLive-TV-android5-{abi}-skia.apk`.
 ///
 /// The last resort of the update flow: the release's real asset list and the
 /// releases.json file list are tried first, and this fills in when a release
@@ -24,25 +25,35 @@ class ReleaseAssetUrls {
 
   String get normalizedVersion {
     final value = version.trim();
-    return value.startsWith('v') || value.startsWith('V') ? value.substring(1) : value;
+    return value.startsWith('v') || value.startsWith('V')
+        ? value.substring(1)
+        : value;
   }
 
   bool get isValid {
     final uri = Uri.tryParse(projectUrl.trim());
     final safeVersion =
-        RegExp(r'^[0-9A-Za-z][0-9A-Za-z._-]*$').hasMatch(normalizedVersion) && !normalizedVersion.contains('..');
+        RegExp(r'^[0-9A-Za-z][0-9A-Za-z._-]*$').hasMatch(normalizedVersion) &&
+        !normalizedVersion.contains('..');
     return uri != null &&
         uri.scheme == 'https' &&
+        uri.host == 'github.com' &&
+        uri.path.replaceFirst(RegExp(r'/+$'), '') ==
+            '/$android5UpdateOwner/$android5UpdateRepository' &&
         uri.hasAuthority &&
         !uri.hasQuery &&
         !uri.hasFragment &&
         uri.userInfo.isEmpty &&
-        safeVersion;
+        safeVersion &&
+        isAndroid5Version(normalizedVersion);
   }
 
   String get releaseBase {
     if (!isValid) return '';
-    final normalizedProject = projectUrl.trim().replaceFirst(RegExp(r'/+$'), '');
+    final normalizedProject = projectUrl.trim().replaceFirst(
+      RegExp(r'/+$'),
+      '',
+    );
     return '$normalizedProject/releases/download/v$normalizedVersion';
   }
 
@@ -51,9 +62,8 @@ class ReleaseAssetUrls {
   String apkForAbi(String abi, {String renderer = ''}) {
     if (!isValid) return '';
     final String name = abi.trim().toLowerCase();
-    if (name.isEmpty) return '';
-    final String tag = renderer.trim().toLowerCase();
-    return '$releaseBase/PureLive-TV-$name${tag.isEmpty ? '' : '-$tag'}.apk';
+    final asset = android5AssetName(name);
+    return asset == null ? '' : '$releaseBase/$asset';
   }
 }
 
@@ -65,20 +75,28 @@ class VersionUtil {
   static PackageInfo? _packageInfo;
 
   /// Release repository for the TV build.
-  static const String updateOwner = 'liuchuancong';
-  static const String updateRepository = 'pure_live_TV';
-  static final String projectUrl = 'https://github.com/$updateOwner/$updateRepository';
+  static const String updateOwner = android5UpdateOwner;
+  static const String updateRepository = android5UpdateRepository;
+  static final String projectUrl =
+      'https://github.com/$updateOwner/$updateRepository';
   static final String issuesUrl = '$projectUrl/issues';
-  static const String githubUrl = 'https://github.com/liuchuancong';
+  static const String githubUrl = 'https://github.com/CoxxA';
 
   static const String email = '17792321552@163.com';
-  static const String emailUrl = 'mailto:17792321552@163.com?subject=PureLiveTV Feedback';
+  static const String emailUrl =
+      'mailto:17792321552@163.com?subject=PureLiveTV Feedback';
 
-  static final String releaseUrl = 'https://api.github.com/repos/$updateOwner/$updateRepository/releases?per_page=30';
+  static final String releaseUrl =
+      'https://api.github.com/repos/$updateOwner/$updateRepository/releases?per_page=30';
 
-  static final GitHubMirror mirror = GitHubMirror(owner: updateOwner, repo: updateRepository, branch: 'master');
+  static final GitHubMirror mirror = GitHubMirror(
+    owner: updateOwner,
+    repo: updateRepository,
+    branch: android5UpdateBranch,
+  );
 
-  static List<String> get _versionUrls => SettingsService.to.appState.useGitHubOriginForUpdates
+  static List<String> get _versionUrls =>
+      SettingsService.to.appState.useGitHubOriginForUpdates
       ? [mirror.rawUrl('assets/version.json')]
       : mirror.mirrors('assets/version.json');
 
@@ -125,7 +143,8 @@ class VersionUtil {
   static Future<bool>? _checkInFlight;
 
   /// Runs the update check, joining one that is already running.
-  Future<bool> checkUpdate() => _checkInFlight ??= _runCheckUpdate().whenComplete(() => _checkInFlight = null);
+  Future<bool> checkUpdate() => _checkInFlight ??= _runCheckUpdate()
+      .whenComplete(() => _checkInFlight = null);
 
   /// Waits for a running check and reports its verdict.
   ///
@@ -133,7 +152,9 @@ class VersionUtil {
   /// the first frames, so reading [isHasNewVersion] right after startup always
   /// says "no update". [timeout] only covers a check that never answers (a dead
   /// network); the dialog then stays away, as it does for "no update".
-  static Future<bool> verdict({Duration timeout = const Duration(seconds: 15)}) async {
+  static Future<bool> verdict({
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
     final running = _checkInFlight;
 
     if (running != null) {
@@ -187,9 +208,12 @@ class VersionUtil {
   }
 
   static void _applyVersionData(Map<String, dynamic> data) {
-    final selected = selectPlatformVersionData(data, platform: _currentPlatformKey);
+    final selected = selectPlatformVersionData(
+      data,
+      platform: _currentPlatformKey,
+    );
     final parsedVersion = selected['version']?.toString().trim() ?? '';
-    if (parsedVersion.isEmpty) {
+    if (!isAndroid5Version(parsedVersion)) {
       throw const FormatException('Incomplete release identity');
     }
     // `build_number` is optional in the release manifest: the file published on
@@ -214,7 +238,10 @@ class VersionUtil {
   /// `2.0.20` → `12020`, the flattened scheme the manifest uses for
   /// `version_num`, so a manifest without a build number still yields one.
   static String? _flattenedVersion(String version) {
-    final clean = version.split(RegExp(r'[-+]'))[0].replaceFirst(RegExp('^[vV]'), '').trim();
+    final clean = version
+        .split(RegExp(r'[-+]'))[0]
+        .replaceFirst(RegExp('^[vV]'), '')
+        .trim();
     final parts = clean.split('.');
     if (parts.isEmpty || int.tryParse(parts[0]) == null) return null;
     final int major = int.parse(parts[0]);
@@ -227,15 +254,21 @@ class VersionUtil {
   /// older sources default to arm64.
   static Set<String> selectAndroidAbis(Map<String, dynamic> data) {
     final raw = data['android_abis'];
-    if (raw is! List) return const {'arm64-v8a'};
-    return raw.map((item) => item.toString()).where(_supportAndroidAbis.contains).toSet();
+    if (raw is! List) return android5SupportedAbis;
+    return raw
+        .map((item) => item.toString())
+        .where(_supportAndroidAbis.contains)
+        .toSet();
   }
 
-  static const Set<String> _supportAndroidAbis = {'arm64-v8a', 'armeabi-v7a', 'x86_64'};
+  static const Set<String> _supportAndroidAbis = android5SupportedAbis;
 
   /// Merges release info per platform field, still accepting the top-level fields
   /// used by older release sources.
-  static Map<String, dynamic> selectPlatformVersionData(Map<String, dynamic> data, {required String platform}) {
+  static Map<String, dynamic> selectPlatformVersionData(
+    Map<String, dynamic> data, {
+    required String platform,
+  }) {
     final platforms = data['platforms'];
     final platformData = platforms is Map ? platforms[platform] : null;
     if (platformData is! Map) return data;
@@ -256,28 +289,7 @@ class VersionUtil {
   }
 
   static bool isNewerVersion(String latest, String current) {
-    try {
-      final latestClean = latest.split(RegExp(r'[-+]'))[0].replaceFirst(RegExp('^[vV]'), '').trim();
-      final currentClean = current.split(RegExp(r'[-+]'))[0].replaceFirst(RegExp('^[vV]'), '').trim();
-
-      final latestParts = latestClean.split('.').map(int.parse).toList();
-      final currentParts = currentClean.split('.').map(int.parse).toList();
-
-      final maxLength = latestParts.length > currentParts.length ? latestParts.length : currentParts.length;
-
-      while (latestParts.length < maxLength) {
-        latestParts.add(0);
-      }
-      while (currentParts.length < maxLength) {
-        currentParts.add(0);
-      }
-
-      for (int i = 0; i < maxLength; i++) {
-        if (latestParts[i] > currentParts[i]) return true;
-        if (latestParts[i] < currentParts[i]) return false;
-      }
-    } catch (_) {}
-    return false;
+    return isNewerAndroid5Version(latest, current);
   }
 
   static int? _versionInt(Object? value) {

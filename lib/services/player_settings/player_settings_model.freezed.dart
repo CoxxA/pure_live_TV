@@ -15,7 +15,8 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$PlayerSettingsModel {
 
- int get videoFitIndex; String get videoPlayerKey; String get preferResolution; String get preferResolutionCellular; bool get enableCodec; bool get playerCompatMode; bool get customPlayerOutput; String get videoOutputDriver; String get audioOutputDriver; String get videoHardwareDecoder; bool get floatPlay; bool get audioOnly; bool get useHardStopOnExit; bool get windowsPipAlwaysOnTop; bool get enableRtxVsr; bool get enablePortraitStreamAdaptation; bool get portraitAdaptiveHeight; String get portraitLayoutModeName; String get portraitFullscreenPolicyName; String get portraitFullscreenDisplayModeName; bool get portraitPipFollowSource; String get portraitDanmakuModeName; bool get rememberPortraitRoomOverride; bool get showPortraitDiagnostics; Map<String, String> get portraitRoomOverrides;
+ int get videoFitIndex; String get videoPlayerKey; String get preferResolution; String get preferResolutionCellular; bool get enableCodec; bool get playerCompatMode; bool get customPlayerOutput; String get videoOutputDriver; String get audioOutputDriver; String get videoHardwareDecoder; bool get floatPlay; bool get audioOnly; bool get useHardStopOnExit;// Windows and portrait only. Synced but never consumed on TV.
+ bool get windowsPipAlwaysOnTop; bool get enableRtxVsr; bool get enablePortraitStreamAdaptation; bool get portraitAdaptiveHeight; String get portraitLayoutModeName; String get portraitFullscreenPolicyName; String get portraitFullscreenDisplayModeName; bool get portraitPipFollowSource; String get portraitDanmakuModeName; bool get rememberPortraitRoomOverride; bool get showPortraitDiagnostics; Map<String, String> get portraitRoomOverrides;
 /// Create a copy of PlayerSettingsModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -249,6 +250,7 @@ class _PlayerSettingsModel implements PlayerSettingsModel {
 @override@JsonKey() final  bool floatPlay;
 @override@JsonKey() final  bool audioOnly;
 @override@JsonKey() final  bool useHardStopOnExit;
+// Windows and portrait only. Synced but never consumed on TV.
 @override@JsonKey() final  bool windowsPipAlwaysOnTop;
 @override@JsonKey() final  bool enableRtxVsr;
 @override@JsonKey() final  bool enablePortraitStreamAdaptation;

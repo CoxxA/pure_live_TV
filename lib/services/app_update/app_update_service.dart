@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
@@ -9,6 +10,7 @@ import 'package:pure_live/shared/common/api_proxy_policy.dart';
 import 'package:pure_live/shared/common/http_client.dart';
 import 'package:pure_live/shared/platform/race_http.dart';
 import 'package:pure_live/shared/utils/version_util.dart';
+import 'package:pure_live/shared/utils/android5_update_policy.dart';
 import 'package:pure_live/services/settings/settings.dart';
 import 'package:pure_live/shared/platform/file_utils.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -19,7 +21,15 @@ import 'package:pure_live/shared/models/release_model/release_model.dart';
 
 part 'app_update_service.g.dart';
 
-enum AppUpdatePhase { idle, checking, upToDate, available, downloading, readyToInstall, failed }
+enum AppUpdatePhase {
+  idle,
+  checking,
+  upToDate,
+  available,
+  downloading,
+  readyToInstall,
+  failed,
+}
 
 /// What the app did to this device's copy of itself.
 enum AppUpdateAction { checked, available, downloaded, installed, failed }
@@ -28,11 +38,20 @@ enum AppUpdateAction { checked, available, downloaded, installed, failed }
 ///
 /// The download dialog owns the install action, so the controller reports the
 /// outcome instead of showing anything itself: the caller picks the message.
-enum AppInstallResult { launched, permissionDenied, launchFailed, missingPackage }
+enum AppInstallResult {
+  launched,
+  permissionDenied,
+  launchFailed,
+  missingPackage,
+}
 
 /// One line of local update log; kept in Hive so it survives the restart.
 class AppUpdateRecord {
-  const AppUpdateRecord({required this.version, required this.action, required this.time});
+  const AppUpdateRecord({
+    required this.version,
+    required this.action,
+    required this.time,
+  });
 
   final String version;
   final AppUpdateAction action;
@@ -54,7 +73,9 @@ class AppUpdateRecord {
     return AppUpdateRecord(
       version: '${json['version'] ?? ''}',
       action: action,
-      time: DateTime.tryParse('${json['time']}') ?? DateTime.fromMillisecondsSinceEpoch(0),
+      time:
+          DateTime.tryParse('${json['time']}') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
     );
   }
 }
@@ -69,7 +90,11 @@ class AppUpdateRecord {
 /// the prefixed ones.
 String? abiForAssetName(String name) {
   final String lower = name.trim().toLowerCase();
-  for (final String abi in const <String>['arm64-v8a', 'armeabi-v7a', 'x86_64']) {
+  for (final String abi in const <String>[
+    'arm64-v8a',
+    'armeabi-v7a',
+    'x86_64',
+  ]) {
     // Boundaries keep `armeabi-v7a` from answering for `arm64-v8a`.
     if (RegExp(
       '(^|[^a-z0-9])${RegExp.escape(abi)}'
@@ -101,7 +126,11 @@ bool isApkAsset(String name, String url) {
 /// One release asset from GitHub's releases API — the source of truth for
 /// downloads (version.json is only a hint).
 class ReleaseAssetInfo {
-  const ReleaseAssetInfo({required this.name, required this.url, required this.sizeBytes});
+  const ReleaseAssetInfo({
+    required this.name,
+    required this.url,
+    required this.sizeBytes,
+  });
 
   final String name;
   final String url;
@@ -118,44 +147,45 @@ class ReleaseAssetInfo {
 
   String get sizeText {
     if (sizeBytes <= 0) return '';
-    if (sizeBytes < 1024 * 1024) return '${(sizeBytes / 1024).toStringAsFixed(0)} KB';
+    if (sizeBytes < 1024 * 1024)
+      return '${(sizeBytes / 1024).toStringAsFixed(0)} KB';
     return '${(sizeBytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 }
 
 /// The release of an API payload (`/releases`) that describes [version].
 ///
-/// The entry whose tag is that version wins, the newest non-prerelease release
-/// answers when the version is not published, and a payload of nothing but
-/// prereleases still describes its first entry. The manifest is what the update
-/// page shows, so a manifest behind the newest release must not pair its notes
-/// with that release's files.
+/// The manifest and APK must describe the same Android 5 release. Preview
+/// releases are installable, but upstream tags, drafts and unrelated versions
+/// never supply a fallback package.
 Map<String, dynamic>? selectReleaseEntry(Object? decoded, String version) {
   if (decoded is! List || decoded.isEmpty) return null;
-  final String wanted = version.trim().replaceFirst(RegExp('^[vV]'), '');
+  final String wanted = normalizeAndroid5Version(version);
+  if (wanted.isNotEmpty && !isAndroid5Version(wanted)) return null;
   Map<String, dynamic>? newest;
   for (final entry in decoded) {
     if (entry is! Map) continue;
     final map = Map<String, dynamic>.from(entry);
-    if (map['prerelease'] == true) continue;
-    newest ??= map;
-    if (wanted.isEmpty) continue;
-    final tag = '${map['tag_name'] ?? map['name'] ?? ''}'.trim().replaceFirst(RegExp('^[vV]'), '');
+    if (map['draft'] == true) continue;
+    final tag = normalizeAndroid5Version('${map['tag_name'] ?? ''}');
+    if (!isAndroid5Version(tag)) continue;
+    if (newest == null || isNewerAndroid5Version(tag, '${newest['tag_name']}'))
+      newest = map;
     if (tag == wanted) return map;
   }
-  if (newest != null) return newest;
-  final first = decoded.first;
-  return first is Map ? Map<String, dynamic>.from(first) : null;
+  return wanted.isEmpty ? newest : null;
 }
 
 /// The release history payload (JSON array or `releases` object), newest first.
 List<ReleaseModel> parseReleaseHistoryPayload(Object? decoded) {
   final rawList = switch (decoded) {
     final List values => values,
-    final Map values when values['releases'] is List => values['releases'] as List,
+    final Map values when values['releases'] is List =>
+      values['releases'] as List,
     _ => null,
   };
-  if (rawList == null) throw const FormatException('Invalid release history payload');
+  if (rawList == null)
+    throw const FormatException('Invalid release history payload');
 
   final releases = <ReleaseModel>[];
   for (final entry in rawList) {
@@ -166,8 +196,20 @@ List<ReleaseModel> parseReleaseHistoryPayload(Object? decoded) {
       // release list would otherwise fail to load over a missing avatar.
       json['author'] ??= <String, dynamic>{};
       final release = ReleaseModel.fromJson(json);
-      if (release.version.trim().isEmpty) continue;
-      releases.add(release);
+      if (!isAndroid5Version(release.version)) continue;
+      releases.add(
+        release.copyWith(
+          files: release.files
+              .where(
+                (file) => isAndroid5Asset(
+                  file.name,
+                  file.url,
+                  version: release.version,
+                ),
+              )
+              .toList(),
+        ),
+      );
     } catch (_) {
       // One unreadable entry must not cost the whole history.
       continue;
@@ -175,7 +217,9 @@ List<ReleaseModel> parseReleaseHistoryPayload(Object? decoded) {
   }
   releases.sort((left, right) {
     final byDate = right.date.compareTo(left.date);
-    return byDate != 0 ? byDate : compareReleaseVersions(right.version, left.version);
+    return byDate != 0
+        ? byDate
+        : compareReleaseVersions(right.version, left.version);
   });
   return releases;
 }
@@ -183,7 +227,8 @@ List<ReleaseModel> parseReleaseHistoryPayload(Object? decoded) {
 /// Numeric comparison of dotted versions, so 3.0.10 sorts after 3.0.9 when two
 /// releases share a date. Non-numeric parts fall back to text order.
 int compareReleaseVersions(String left, String right) {
-  List<String> parts(String value) => value.trim().replaceFirst(RegExp(r'^[vV]'), '').split(RegExp(r'[.+-]'));
+  List<String> parts(String value) =>
+      value.trim().replaceFirst(RegExp(r'^[vV]'), '').split(RegExp(r'[.+-]'));
   final a = parts(left);
   final b = parts(right);
   for (var i = 0; i < a.length || i < b.length; i++) {
@@ -237,7 +282,9 @@ String safeDownloadFileName(String url, {String? suggestedName}) {
   if (candidate.isEmpty) {
     try {
       final uri = Uri.parse(url.trim());
-      final segments = uri.pathSegments.where((segment) => segment.trim().isNotEmpty).toList();
+      final segments = uri.pathSegments
+          .where((segment) => segment.trim().isNotEmpty)
+          .toList();
 
       if (segments.isNotEmpty) {
         candidate = segments.last;
@@ -252,7 +299,10 @@ String safeDownloadFileName(String url, {String? suggestedName}) {
   candidate = candidate.replaceAll('\\', '/').split('/').last.trim();
 
   candidate = candidate
-      .replaceAll(RegExp(r'[\x00-\x1F\x7F<>:"/\\|?*\u202A-\u202E\u2066-\u2069]'), '_')
+      .replaceAll(
+        RegExp(r'[\x00-\x1F\x7F<>:"/\\|?*\u202A-\u202E\u2066-\u2069]'),
+        '_',
+      )
       .replaceFirst(RegExp(r'^[. ]+'), '')
       .replaceFirst(RegExp(r'[. ]+$'), '');
 
@@ -262,7 +312,10 @@ String safeDownloadFileName(String url, {String? suggestedName}) {
     candidate = 'PureLive-tv-update.apk';
   }
 
-  if (RegExp(r'^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)', caseSensitive: false).hasMatch(candidate)) {
+  if (RegExp(
+    r'^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)',
+    caseSensitive: false,
+  ).hasMatch(candidate)) {
     candidate = '_$candidate';
   }
 
@@ -280,9 +333,14 @@ String _fitDownloadBaseName(String candidate) {
   final rawExtension = path.extension(candidate);
   final extension = _truncateUtf8(rawExtension, _maxDownloadExtensionBytes);
 
-  final stem = rawExtension.isEmpty ? candidate : candidate.substring(0, candidate.length - rawExtension.length);
+  final stem = rawExtension.isEmpty
+      ? candidate
+      : candidate.substring(0, candidate.length - rawExtension.length);
 
-  final digest = sha256.convert(utf8.encode(candidate)).toString().substring(0, 12);
+  final digest = sha256
+      .convert(utf8.encode(candidate))
+      .toString()
+      .substring(0, 12);
 
   final suffix = '-$digest$extension';
 
@@ -365,7 +423,7 @@ class AppUpdateState {
   final List<String> abis;
   final String selectedAbi;
 
-  /// 'impeller' (default) or 'skia' — which renderer variant to download.
+  /// Compatibility builds publish Skia packages only.
   final String rendererVariant;
   final String error;
 
@@ -401,7 +459,7 @@ class AppUpdateState {
     this.prerelease = false,
     this.abis = const [],
     this.selectedAbi = '',
-    this.rendererVariant = 'impeller',
+    this.rendererVariant = 'skia',
     this.error = '',
     this.receivedBytes = 0,
     this.totalBytes = 0,
@@ -414,7 +472,8 @@ class AppUpdateState {
     this.latestAssets = const [],
   });
 
-  double get progress => totalBytes > 0 ? (receivedBytes / totalBytes).clamp(0.0, 1.0) : 0;
+  double get progress =>
+      totalBytes > 0 ? (receivedBytes / totalBytes).clamp(0.0, 1.0) : 0;
 
   /// Seconds left, or null while the size or the speed is unknown.
   int? get remainingSeconds {
@@ -511,11 +570,10 @@ class AppUpdateController extends _$AppUpdateController {
   AppUpdateState build() {
     ref.onDispose(_cancelDownload);
     unawaited(_bootstrap());
-    final savedRenderer = HivePrefUtil.getString('updateRendererVariant');
     return AppUpdateState(
       phase: AppUpdatePhase.checking,
       records: _readRecords(),
-      rendererVariant: savedRenderer == 'skia' ? 'skia' : 'impeller',
+      rendererVariant: 'skia',
     );
   }
 
@@ -531,7 +589,19 @@ class AppUpdateController extends _$AppUpdateController {
     } catch (_) {
       return;
     }
-    _patchState(currentVersion: VersionUtil.version, currentBuild: '${VersionUtil.buildNumber}');
+    _patchState(
+      currentVersion: VersionUtil.version,
+      currentBuild: '${VersionUtil.buildNumber}',
+    );
+    if (Platform.isAndroid) {
+      try {
+        final info = await DeviceInfoPlugin().androidInfo;
+        final abi = preferredAndroid5Abi(info.supportedAbis);
+        if (abi != null) _patchState(selectedAbi: abi);
+      } catch (_) {
+        // Architecture remains user-selectable if an OEM blocks this query.
+      }
+    }
   }
 
   /// Checks the repo manifest.
@@ -548,8 +618,13 @@ class AppUpdateController extends _$AppUpdateController {
       final hasUpdate = ok && VersionUtil.hasNewVersion();
       final abis = VersionUtil.latestAndroidAbis.toList()..sort();
       if (!hasUpdate) {
-        _patchState(phase: AppUpdatePhase.upToDate, latestVersion: VersionUtil.latestVersion, abis: abis);
-        if (userInitiated) _appendRecord(AppUpdateAction.checked, version: VersionUtil.version);
+        _patchState(
+          phase: AppUpdatePhase.upToDate,
+          latestVersion: VersionUtil.latestVersion,
+          abis: abis,
+        );
+        if (userInitiated)
+          _appendRecord(AppUpdateAction.checked, version: VersionUtil.version);
         // The download page opens from the up-to-date state as well, and the
         // manifest says nothing about the files a release published: without
         // this its sources would be names assembled from the version alone.
@@ -566,18 +641,24 @@ class AppUpdateController extends _$AppUpdateController {
         changelogMarkdown: VersionUtil.latestUpdateLog.trim(),
         prerelease: VersionUtil.prerelease,
         abis: abis,
-        selectedAbi: abis.contains(state.selectedAbi) || state.selectedAbi.isEmpty
-            ? (abis.contains('arm64-v8a') ? 'arm64-v8a' : (abis.isEmpty ? '' : abis.first))
-            : state.selectedAbi,
+        selectedAbi: abis.contains(state.selectedAbi)
+            ? state.selectedAbi
+            : (abis.isEmpty ? '' : abis.first),
         history: history,
       );
-      _appendRecord(AppUpdateAction.available, version: VersionUtil.latestVersion);
+      _appendRecord(
+        AppUpdateAction.available,
+        version: VersionUtil.latestVersion,
+      );
       // The manifest's version/build_number is a hint; the release's real
       // asset list that downloads. Fetched in the background so
       // the page can already render, and the rows upgrade when it lands.
       unawaited(_fetchLatestReleaseAssets());
     } catch (error) {
-      _patchState(phase: AppUpdatePhase.failed, error: _describeError(error, fallback: i18n('check_update_failed')));
+      _patchState(
+        phase: AppUpdatePhase.failed,
+        error: _describeError(error, fallback: i18n('check_update_failed')),
+      );
       _appendRecord(AppUpdateAction.failed, version: state.latestVersion);
     } finally {
       _checking = false;
@@ -607,17 +688,25 @@ class AppUpdateController extends _$AppUpdateController {
         final data = await dio.get<String>(
           url,
           options: Options(
-            headers: {'Accept': 'application/vnd.github+json', 'User-Agent': 'PureLiveTV'},
+            headers: {
+              'Accept': 'application/vnd.github+json',
+              'User-Agent': 'PureLiveTV',
+            },
             responseType: ResponseType.plain,
           ),
         );
         final decoded = jsonDecode(data.data ?? '');
         final assets = _parseLatestReleaseAssets(decoded);
         if (assets != null) {
-          final abis = assets.map((a) => a.abi).whereType<String>().toSet().toList()..sort();
+          final abis =
+              assets.map((a) => a.abi).whereType<String>().toSet().toList()
+                ..sort();
           // Real assets win over the manifest's declared ABI list: the rows
           // the page draws should match the downloadable files.
-          _patchState(latestAssets: assets, abis: abis.isNotEmpty ? abis : null);
+          _patchState(
+            latestAssets: assets,
+            abis: abis.isNotEmpty ? abis : null,
+          );
           return assets;
         }
       } catch (_) {
@@ -642,15 +731,24 @@ class AppUpdateController extends _$AppUpdateController {
       final name = '${asset['name'] ?? ''}'.trim();
       final url = '${asset['browser_download_url'] ?? ''}'.trim();
       if (name.isEmpty || !url.startsWith('http')) continue;
-      if (!name.toLowerCase().endsWith('.apk')) continue; // TV installs APKs only.
-      result.add(ReleaseAssetInfo(name: name, url: url, sizeBytes: (asset['size'] as num?)?.toInt() ?? 0));
+      if (!isAndroid5Asset(name, url, version: state.latestVersion)) continue;
+      result.add(
+        ReleaseAssetInfo(
+          name: name,
+          url: url,
+          sizeBytes: (asset['size'] as num?)?.toInt() ?? 0,
+        ),
+      );
     }
     return result;
   }
 
-  Dio _dioForApi() =>
-      Dio(BaseOptions(connectTimeout: const Duration(seconds: 12), receiveTimeout: const Duration(seconds: 12)))
-        ..httpClientAdapter = ApiProxyPolicy.dioAdapter;
+  Dio _dioForApi() => Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 12),
+      receiveTimeout: const Duration(seconds: 12),
+    ),
+  )..httpClientAdapter = ApiProxyPolicy.dioAdapter;
 
   // ---------------------------------------------------------------------------
   // Release history (assets/releases.json through the repo mirrors)
@@ -662,9 +760,12 @@ class AppUpdateController extends _$AppUpdateController {
     try {
       final mirror = VersionUtil.mirror;
       final useOrigin = SettingsService.to.appState.useGitHubOriginForUpdates;
-      final sources = useOrigin ? [mirror.rawUrl('assets/releases.json')] : mirror.mirrors('assets/releases.json');
+      final sources = useOrigin
+          ? [mirror.rawUrl('assets/releases.json')]
+          : mirror.mirrors('assets/releases.json');
       final url = await RaceHttp.findFastestUrl([
-        for (final s in sources) '$s?ts=${DateTime.now().millisecondsSinceEpoch}',
+        for (final s in sources)
+          '$s?ts=${DateTime.now().millisecondsSinceEpoch}',
       ]);
       if (url == null) throw StateError('no mirror responded');
       final data = await HttpClient.instance.getJson(url);
@@ -687,7 +788,10 @@ class AppUpdateController extends _$AppUpdateController {
 
   List<AppUpdateRecord> _readRecords() {
     try {
-      return HivePrefUtil.getObjectList<AppUpdateRecord>(_recordsKey, AppUpdateRecord.fromJson);
+      return HivePrefUtil.getObjectList<AppUpdateRecord>(
+        _recordsKey,
+        AppUpdateRecord.fromJson,
+      );
     } catch (_) {
       // The store is not up yet (or the log is unreadable): start empty.
       return const <AppUpdateRecord>[];
@@ -700,16 +804,31 @@ class AppUpdateController extends _$AppUpdateController {
       action: action,
       time: DateTime.now(),
     );
-    final List<AppUpdateRecord> next = <AppUpdateRecord>[record, ...state.records];
+    final List<AppUpdateRecord> next = <AppUpdateRecord>[
+      record,
+      ...state.records,
+    ];
     if (next.length > _maxRecords) next.removeRange(_maxRecords, next.length);
     _patchState(records: next);
-    unawaited(HivePrefUtil.setObjectList<AppUpdateRecord>(_recordsKey, next, (entry) => entry.toJson()));
+    unawaited(
+      HivePrefUtil.setObjectList<AppUpdateRecord>(
+        _recordsKey,
+        next,
+        (entry) => entry.toJson(),
+      ),
+    );
   }
 
   /// Empties local update log.
   void clearRecords() {
     _patchState(records: const <AppUpdateRecord>[]);
-    unawaited(HivePrefUtil.setObjectList<AppUpdateRecord>(_recordsKey, const <AppUpdateRecord>[], (e) => e.toJson()));
+    unawaited(
+      HivePrefUtil.setObjectList<AppUpdateRecord>(
+        _recordsKey,
+        const <AppUpdateRecord>[],
+        (e) => e.toJson(),
+      ),
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -722,7 +841,8 @@ class AppUpdateController extends _$AppUpdateController {
     final latest = state.latestVersion;
     if (latest.isEmpty || state.history.isEmpty) return null;
     for (final release in state.history) {
-      if (release.version == latest || release.version.replaceFirst(RegExp('^[vV]'), '') == latest) {
+      if (release.version == latest ||
+          release.version.replaceFirst(RegExp('^[vV]'), '') == latest) {
         return release;
       }
     }
@@ -741,12 +861,24 @@ class AppUpdateController extends _$AppUpdateController {
     final String abi = (abiOverride ?? state.selectedAbi).trim().toLowerCase();
     final String renderer = state.rendererVariant;
 
-    final List<({String name, String url})> published = <({String name, String url})>[
-      for (final ReleaseAssetInfo asset in state.latestAssets)
-        if (asset.isApk) (name: asset.name, url: asset.url),
-      for (final ReleaseFileModel file in _latestRelease?.files ?? const <ReleaseFileModel>[])
-        if (isApkAsset(file.name, file.url) && file.url.startsWith('http')) (name: file.name, url: file.url),
-    ];
+    final List<({String name, String url})> published =
+        <({String name, String url})>[
+          for (final ReleaseAssetInfo asset in state.latestAssets)
+            if (isAndroid5Asset(
+              asset.name,
+              asset.url,
+              version: state.latestVersion,
+            ))
+              (name: asset.name, url: asset.url),
+          for (final ReleaseFileModel file
+              in _latestRelease?.files ?? const <ReleaseFileModel>[])
+            if (isAndroid5Asset(
+              file.name,
+              file.url,
+              version: state.latestVersion,
+            ))
+              (name: file.name, url: file.url),
+        ];
 
     String? untagged;
     String? anyPackage;
@@ -761,7 +893,10 @@ class AppUpdateController extends _$AppUpdateController {
     if (anyPackage != null) return anyPackage;
 
     final direct = VersionUtil.downloadUrl;
-    if (direct.toLowerCase().endsWith('.apk')) return direct;
+    final directName = Uri.tryParse(direct)?.pathSegments.lastOrNull ?? '';
+    if (isAndroid5Asset(directName, direct, version: state.latestVersion) &&
+        abiForAssetName(directName) == abi)
+      return direct;
     final assembled = ReleaseAssetUrls(
       projectUrl: VersionUtil.projectUrl,
       version: state.latestVersion,
@@ -772,7 +907,7 @@ class AppUpdateController extends _$AppUpdateController {
   void pickAbi(String abi) => _patchState(selectedAbi: abi);
 
   void pickRenderer(String renderer) {
-    final value = renderer == 'skia' ? 'skia' : 'impeller';
+    const value = 'skia';
     HivePrefUtil.setString('updateRendererVariant', value);
     _patchState(rendererVariant: value);
   }
@@ -788,6 +923,8 @@ class AppUpdateController extends _$AppUpdateController {
     String? anyPackage;
 
     for (final ReleaseAssetInfo asset in state.latestAssets) {
+      if (!isAndroid5Asset(asset.name, asset.url, version: state.latestVersion))
+        continue;
       if (asset.abi != wanted || asset.sizeText.isEmpty) continue;
       if (asset.renderer == renderer) return asset.sizeText;
       if (asset.renderer.isEmpty) untagged ??= asset.sizeText;
@@ -797,15 +934,14 @@ class AppUpdateController extends _$AppUpdateController {
     final ReleaseModel? release = _latestRelease;
     if (release != null) {
       for (final ReleaseFileModel file in release.files) {
+        if (!isAndroid5Asset(file.name, file.url, version: state.latestVersion))
+          continue;
         if (file.size.isEmpty) continue;
         if (abiForAssetName(file.name) != wanted) continue;
         final String tag = rendererForAssetName(file.name);
         if (tag == renderer) return file.size;
         if (tag.isEmpty) untagged ??= file.size;
         anyPackage ??= file.size;
-      }
-      if (release.files.length == 1 && release.files.first.size.isNotEmpty) {
-        anyPackage ??= release.files.first.size;
       }
     }
 
@@ -830,15 +966,20 @@ class AppUpdateController extends _$AppUpdateController {
     int anyPackage = 0;
 
     for (final ReleaseAssetInfo asset in state.latestAssets) {
+      if (!isAndroid5Asset(asset.name, asset.url, version: state.latestVersion))
+        continue;
       if (!asset.isApk || asset.abi != wanted || asset.sizeBytes <= 0) continue;
       if (asset.renderer == renderer) return asset.sizeBytes;
-      if (asset.renderer.isEmpty) untagged = untagged == 0 ? asset.sizeBytes : untagged;
+      if (asset.renderer.isEmpty)
+        untagged = untagged == 0 ? asset.sizeBytes : untagged;
       anyPackage = anyPackage == 0 ? asset.sizeBytes : anyPackage;
     }
 
     final ReleaseModel? release = _latestRelease;
     if (release != null) {
       for (final ReleaseFileModel file in release.files) {
+        if (!isAndroid5Asset(file.name, file.url, version: state.latestVersion))
+          continue;
         final int? parsed = parseSizeText(file.size);
         if (parsed == null || parsed <= 0) continue;
         if (abiForAssetName(file.name) != wanted) continue;
@@ -846,10 +987,6 @@ class AppUpdateController extends _$AppUpdateController {
         if (tag == renderer) return parsed;
         if (tag.isEmpty) untagged = untagged == 0 ? parsed : untagged;
         anyPackage = anyPackage == 0 ? parsed : anyPackage;
-      }
-      if (release.files.length == 1) {
-        final int? parsed = parseSizeText(release.files.first.size);
-        if (anyPackage == 0 && parsed != null && parsed > 0) anyPackage = parsed;
       }
     }
 
@@ -862,7 +999,9 @@ class AppUpdateController extends _$AppUpdateController {
   /// The value is rounded for display (see [assetSizeFor]), so callers must
   /// verify with a tolerance instead of treating it as exact.
   static int? parseSizeText(String text) {
-    final match = RegExp(r'([0-9]+(?:\.[0-9]+)?)\s*([kKmMgG]?)[bB]').firstMatch(text.trim());
+    final match = RegExp(
+      r'([0-9]+(?:\.[0-9]+)?)\s*([kKmMgG]?)[bB]',
+    ).firstMatch(text.trim());
     if (match == null) return null;
     final double value = double.tryParse(match.group(1)!) ?? -1;
     if (value < 0) return null;
@@ -897,8 +1036,14 @@ class AppUpdateController extends _$AppUpdateController {
   /// Returns true when a package was committed.
   Future<bool> downloadAsset(String url, {bool preferGivenUrl = false}) async {
     if (state.phase == AppUpdatePhase.downloading) return false;
-    if (!url.startsWith('http')) {
-      _patchState(phase: AppUpdatePhase.available, error: i18n('update_error_no_url'));
+    final prefix = _mirrorPrefixOf(url);
+    final origin = prefix.isEmpty ? url : url.substring(prefix.length);
+    final name = Uri.tryParse(origin)?.pathSegments.lastOrNull ?? '';
+    if (!isAndroid5Asset(name, origin)) {
+      _patchState(
+        phase: AppUpdatePhase.available,
+        error: i18n('update_error_no_url'),
+      );
       return false;
     }
 
@@ -909,8 +1054,12 @@ class AppUpdateController extends _$AppUpdateController {
     // The APK download is an interface request like any other: behind a
     // configured interface proxy it has to go through it (the mirrors are
     // often only reachable that way).
-    _dio = Dio(BaseOptions(connectTimeout: const Duration(seconds: 20), receiveTimeout: const Duration(minutes: 30)))
-      ..httpClientAdapter = ApiProxyPolicy.dioAdapter;
+    _dio = Dio(
+      BaseOptions(
+        connectTimeout: const Duration(seconds: 20),
+        receiveTimeout: const Duration(minutes: 30),
+      ),
+    )..httpClientAdapter = ApiProxyPolicy.dioAdapter;
     _patchState(
       phase: AppUpdatePhase.downloading,
       receivedBytes: 0,
@@ -931,7 +1080,10 @@ class AppUpdateController extends _$AppUpdateController {
       if (!await target.exists()) await target.create(recursive: true);
     } catch (error) {
       _cancelDownload();
-      _patchState(phase: AppUpdatePhase.available, error: i18n('update_error_storage'));
+      _patchState(
+        phase: AppUpdatePhase.available,
+        error: i18n('update_error_storage'),
+      );
       return false;
     }
 
@@ -943,10 +1095,18 @@ class AppUpdateController extends _$AppUpdateController {
     for (final candidate in candidates.toSet()) {
       final destination = '${target.path}${Platform.pathSeparator}$fileName';
       try {
-        await _downloadCandidate(candidate, destination, expectedBytes: expectedBytes);
+        await _downloadCandidate(
+          candidate,
+          destination,
+          expectedBytes: expectedBytes,
+        );
         if (_cancelToken?.isCancelled == true) return false;
         _cancelDownload();
-        _patchState(phase: AppUpdatePhase.readyToInstall, receivedBytes: state.totalBytes, downloadedPath: destination);
+        _patchState(
+          phase: AppUpdatePhase.readyToInstall,
+          receivedBytes: state.totalBytes,
+          downloadedPath: destination,
+        );
         _appendRecord(AppUpdateAction.downloaded, version: state.latestVersion);
         return true;
       } catch (error) {
@@ -959,7 +1119,7 @@ class AppUpdateController extends _$AppUpdateController {
     _patchState(
       phase: AppUpdatePhase.available,
       // lastError is null when the candidate list was empty; never splice that into
-    // the message as a dangling "...: null".
+      // the message as a dangling "...: null".
       error: _describeError(lastError, fallback: i18n('download_failed')),
       receivedBytes: 0,
       totalBytes: 0,
@@ -974,7 +1134,11 @@ class AppUpdateController extends _$AppUpdateController {
   /// The package is never written where the installer can see a half-file: the
   /// bytes land in a staging file, and only a completed transfer is renamed
   /// onto [destination].
-  Future<void> _downloadCandidate(String url, String destination, {int expectedBytes = 0}) async {
+  Future<void> _downloadCandidate(
+    String url,
+    String destination, {
+    int expectedBytes = 0,
+  }) async {
     final completed = File(destination);
     final partial = File('$destination.part');
 
@@ -987,7 +1151,10 @@ class AppUpdateController extends _$AppUpdateController {
       url,
       partial.path,
       cancelToken: _cancelToken,
-      options: Options(headers: {'User-Agent': 'PureLiveTV'}, responseType: ResponseType.bytes),
+      options: Options(
+        headers: {'User-Agent': 'PureLiveTV'},
+        responseType: ResponseType.bytes,
+      ),
       onReceiveProgress: (received, total) {
         final now = DateTime.now();
         final dt = now.difference(lastTick).inMilliseconds;
@@ -995,7 +1162,11 @@ class AppUpdateController extends _$AppUpdateController {
           final speed = (received - lastBytes) / (dt / 1000) / (1024 * 1024);
           lastTick = now;
           lastBytes = received;
-          _patchState(receivedBytes: received, totalBytes: total, speedMbps: speed);
+          _patchState(
+            receivedBytes: received,
+            totalBytes: total,
+            speedMbps: speed,
+          );
         } else {
           _patchState(receivedBytes: received, totalBytes: total);
         }
@@ -1007,8 +1178,11 @@ class AppUpdateController extends _$AppUpdateController {
     }
 
     // Validate before the commit: a rejected package is deleted here, so the
-  // installer never sees a partial file.
-    final String? invalid = await _validateStagedPackage(partial, expectedBytes: expectedBytes);
+    // installer never sees a partial file.
+    final String? invalid = await _validateStagedPackage(
+      partial,
+      expectedBytes: expectedBytes,
+    );
     if (invalid != null) {
       await _deleteIfPresent(partial);
       throw FileSystemException(invalid);
@@ -1028,7 +1202,10 @@ class AppUpdateController extends _$AppUpdateController {
   /// 3. **size** - when release metadata provides one. GitHub's `size` is exact;
   ///    the releases.json string (`12.3 MB`) is rounded, so the comparison keeps
   ///    a 2% tolerance. Truncated transfers (tens of MB short) still fail.
-  Future<String?> _validateStagedPackage(File partial, {required int expectedBytes}) async {
+  Future<String?> _validateStagedPackage(
+    File partial, {
+    required int expectedBytes,
+  }) async {
     final int actual = await partial.length();
     if (actual <= 0) return i18n('update_error_package_empty');
 
@@ -1046,11 +1223,17 @@ class AppUpdateController extends _$AppUpdateController {
     }
 
     if (expectedBytes > 0) {
-      final int tolerance = (expectedBytes * 0.02).round().clamp(0, 4 * 1024 * 1024);
+      final int tolerance = (expectedBytes * 0.02).round().clamp(
+        0,
+        4 * 1024 * 1024,
+      );
       if ((actual - expectedBytes).abs() > tolerance) {
         return i18n(
           'update_error_package_size',
-          args: {'expected': _readableBytes(expectedBytes), 'actual': _readableBytes(actual)},
+          args: {
+            'expected': _readableBytes(expectedBytes),
+            'actual': _readableBytes(actual),
+          },
         );
       }
     }
@@ -1092,7 +1275,8 @@ class AppUpdateController extends _$AppUpdateController {
       };
     }
     final String text = error.toString().trim();
-    if (text.isEmpty || text == 'null' || text.endsWith(': null')) return fallback;
+    if (text.isEmpty || text == 'null' || text.endsWith(': null'))
+      return fallback;
     return text;
   }
 
@@ -1109,7 +1293,10 @@ class AppUpdateController extends _$AppUpdateController {
 
     if (Platform.isAndroid && packagePath.toLowerCase().endsWith('.apk')) {
       try {
-        if (await Permission.requestInstallPackages.isDenied) {
+        final sdk = (await DeviceInfoPlugin().androidInfo).version.sdkInt;
+        // Android 5 uses the system-wide unknown-sources setting. The
+        // per-application install permission was introduced in Android 8.
+        if (sdk >= 26 && await Permission.requestInstallPackages.isDenied) {
           final granted = await Permission.requestInstallPackages.request();
           if (!granted.isGranted) {
             _patchState(error: i18n('update_error_install_permission'));
@@ -1135,7 +1322,12 @@ class AppUpdateController extends _$AppUpdateController {
   /// Aborts the transfer the download dialog started.
   void cancelDownload() {
     _cancelDownload();
-    _patchState(phase: AppUpdatePhase.available, receivedBytes: 0, totalBytes: 0, speedMbps: 0);
+    _patchState(
+      phase: AppUpdatePhase.available,
+      receivedBytes: 0,
+      totalBytes: 0,
+      speedMbps: 0,
+    );
   }
 
   void _cancelDownload() {
@@ -1189,7 +1381,9 @@ class AppUpdateController extends _$AppUpdateController {
 
       return committedFile;
     } catch (_) {
-      if (hadPreviousFile && await backupFile.exists() && !await completedFile.exists()) {
+      if (hadPreviousFile &&
+          await backupFile.exists() &&
+          !await completedFile.exists()) {
         await backupFile.rename(completedFile.path);
       }
 

@@ -8,8 +8,6 @@ import 'package:media_core/media_core.dart';
 import 'package:media_core_native/media_core_native.dart';
 import 'package:media_core_media_kit/media_core_media_kit.dart';
 import 'package:media_core_ijk_player/media_core_ijk_player.dart';
-import 'package:media_core_fvp/media_core_fvp.dart';
-import 'package:media_core_better_player/media_core_video_player.dart';
 
 /// Builds the media_kit adapter configuration from the persisted engine
 /// switches.
@@ -49,24 +47,6 @@ FijkPlayerConfig buildFijkPlayerConfig() {
   );
 }
 
-/// Builds the fvp (libmdk) adapter configuration from the persisted engine
-/// switches.
-///
-/// fvp is the Android backup engine: it ships a current FFmpeg plus the
-/// platform hardware decoders, so it recovers sources the bundled libmpv drops
-/// (legacy codec-id-12 HEVC FLV, for example). The adapter applies the Android
-/// audio-backend order and the legacy-HEVC software rule itself; they are
-/// visible here only because they are configuration.
-FvpPlayerConfig buildFvpPlayerConfig() {
-  final settings = SettingsService.to.playerState;
-  return FvpPlayerConfig(
-    // A loopback/private input must never be sent through the proxy.
-    proxyUrlResolver: ({required bool privateInput}) =>
-        PlaybackProxyPolicy.currentNativeUrl(privateInput: privateInput),
-    enableCodec: settings.enableCodec,
-  );
-}
-
 /// Creates a media_kit adapter with the current settings.
 ///
 /// Registered under the app's historical backend id `mpv`
@@ -86,18 +66,6 @@ final class _MediaKitFactory implements PlayerAdapterFactory {
   bool supports(String id) => id == BackendIds.mediaKit || id.isEmpty;
 }
 
-/// Creates an fvp adapter with the current settings.
-final class _FvpFactory implements PlayerAdapterFactory {
-  const _FvpFactory();
-
-  @override
-  PlayerAdapter create(String id) =>
-      FvpPlayerAdapter(id: id, capabilities: FvpPlayerAdapter.defaultCapabilities, config: buildFvpPlayerConfig());
-
-  @override
-  bool supports(String id) => id == BackendIds.fvp || id.isEmpty;
-}
-
 /// Creates an ijkplayer (flv_lzc) adapter with the current settings.
 final class _FlvLzcFactory implements PlayerAdapterFactory {
   const _FlvLzcFactory();
@@ -111,17 +79,6 @@ final class _FlvLzcFactory implements PlayerAdapterFactory {
 
   @override
   bool supports(String id) => id == BackendIds.fijk || id.isEmpty;
-}
-
-/// Creates a better_player adapter with the current settings.
-final class _BetterPlayerFactory implements PlayerAdapterFactory {
-  const _BetterPlayerFactory();
-
-  @override
-  PlayerAdapter create(String id) => BetterPlayerAdapter(id: id, capabilities: BetterPlayerAdapter.defaultCapabilities);
-
-  @override
-  bool supports(String id) => id == BackendIds.betterPlayer || id.isEmpty;
 }
 
 /// Media-core-backed global player service.
@@ -235,20 +192,6 @@ class GlobalPlayerService {
           id: BackendIds.fijk,
           factory: const _FlvLzcFactory(),
           capabilities: FlvLzcPlayerAdapter.defaultCapabilities,
-          priority: priority,
-        );
-      case PlayerEngine.betterPlayer:
-        return PlayerAdapterRegistration(
-          id: BackendIds.betterPlayer,
-          factory: const _BetterPlayerFactory(),
-          capabilities: BetterPlayerAdapter.defaultCapabilities,
-          priority: priority,
-        );
-      case PlayerEngine.fvp:
-        return PlayerAdapterRegistration(
-          id: BackendIds.fvp,
-          factory: const _FvpFactory(),
-          capabilities: FvpPlayerAdapter.defaultCapabilities,
           priority: priority,
         );
     }

@@ -56,10 +56,11 @@ class NiconicoQualityCatalog {
   NiconicoQualityCatalog({
     NiconicoApi? api,
     NiconicoSeatFactory? openSeat,
-    this._readMaster = readNiconicoMaster,
+    NiconicoMasterReader readMaster = readNiconicoMaster,
     String Function(Uri)? findProxy,
     this.deadline = const Duration(seconds: 30),
   }) : _api = api ?? NiconicoApi(),
+       _readMaster = readMaster,
        _openSeat =
            openSeat ?? ((watch, cancel, proxy) => NiconicoSession.open(watch, cancel: cancel, findProxy: proxy)),
        _findProxy = findProxy ?? resolveWebSocketProxyDirective {

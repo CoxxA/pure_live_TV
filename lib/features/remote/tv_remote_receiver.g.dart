@@ -45,7 +45,7 @@ final class TvRemoteReceiverProvider
   TvRemoteReceiver create() => TvRemoteReceiver();
 }
 
-String _$tvRemoteReceiverHash() => r'69199f58df259056e56f2fefc21c628eb86c3320';
+String _$tvRemoteReceiverHash() => r'31bd9bbac3d14162e9dd60ba2ef8f889df65d22e';
 
 /// LAN services (web remote on 8888, plus the callbacks every page binds for
 /// phone pushes) live for the whole session: auto-dispose tore the server down
@@ -56,7 +56,7 @@ abstract class _$TvRemoteReceiver extends $AsyncNotifier<ServerState> {
   FutureOr<ServerState> build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<AsyncValue<ServerState>, ServerState>;
     final element =
         ref.element
@@ -66,6 +66,6 @@ abstract class _$TvRemoteReceiver extends $AsyncNotifier<ServerState> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

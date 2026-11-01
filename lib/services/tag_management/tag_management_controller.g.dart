@@ -48,7 +48,7 @@ abstract class _$TagManagementController extends $Notifier<TagManagementModel> {
   TagManagementModel build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<TagManagementModel, TagManagementModel>;
     final element =
         ref.element
@@ -58,6 +58,6 @@ abstract class _$TagManagementController extends $Notifier<TagManagementModel> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

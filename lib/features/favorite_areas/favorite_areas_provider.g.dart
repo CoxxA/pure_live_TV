@@ -48,7 +48,7 @@ abstract class _$FavoriteAreasNotifier extends $Notifier<FavoriteAreasState> {
   FavoriteAreasState build();
   @$mustCallSuper
   @override
-  WhenComplete runBuild() {
+  void runBuild() {
     final ref = this.ref as $Ref<FavoriteAreasState, FavoriteAreasState>;
     final element =
         ref.element
@@ -58,6 +58,6 @@ abstract class _$FavoriteAreasNotifier extends $Notifier<FavoriteAreasState> {
               Object?,
               Object?
             >;
-    return element.handleCreate(ref, build);
+    element.handleCreate(ref, build);
   }
 }

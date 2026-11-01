@@ -32,9 +32,9 @@ void main() {
       final initial = container.read(playerSettingsControllerProvider);
       expect(initial.videoPlayerKey, 'mpv');
 
-      container.read(playerSettingsControllerProvider.notifier).updateSettings(
-        initial.copyWith(videoPlayerKey: removedEngine),
-      );
+      container
+          .read(playerSettingsControllerProvider.notifier)
+          .updateSettings(initial.copyWith(videoPlayerKey: removedEngine));
       expect(container.read(playerSettingsControllerProvider).videoPlayerKey, 'mpv');
       expect(HivePrefUtil.getString('videoPlayerKey'), 'mpv');
     });
@@ -45,5 +45,28 @@ void main() {
     final container = ProviderContainer();
     addTearDown(container.dispose);
     expect(container.read(playerSettingsControllerProvider).videoPlayerKey, 'ijk');
+  });
+
+  test('a fresh install and reset use the Android compatibility surface', () async {
+    await Hive.box('app_settings').delete('playerCompatMode');
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final subscription = container.listen(playerSettingsControllerProvider, (_, _) {});
+    addTearDown(subscription.close);
+    expect(container.read(playerSettingsControllerProvider).playerCompatMode, isTrue);
+
+    final controller = container.read(playerSettingsControllerProvider.notifier);
+    controller.updateSettings(container.read(playerSettingsControllerProvider).copyWith(playerCompatMode: false));
+    expect(HivePrefUtil.getBool('playerCompatMode'), isFalse);
+    controller.resetMpvPlayerSettings();
+    expect(container.read(playerSettingsControllerProvider).playerCompatMode, isTrue);
+    expect(HivePrefUtil.getBool('playerCompatMode'), isTrue);
+  });
+
+  test('an explicit non-compatibility preference survives restart', () async {
+    await HivePrefUtil.setBool('playerCompatMode', false);
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    expect(container.read(playerSettingsControllerProvider).playerCompatMode, isFalse);
   });
 }

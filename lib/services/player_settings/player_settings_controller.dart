@@ -24,7 +24,7 @@ class PlayerSettingsController extends _$PlayerSettingsController {
         preferResolutionCellular:
             HivePrefUtil.getString('preferResolutionCellular') ?? PlayerConsts.resolutionKeys.first,
         enableCodec: HivePrefUtil.getBool('enableCodec') ?? true,
-        playerCompatMode: HivePrefUtil.getBool('playerCompatMode') ?? false,
+        playerCompatMode: HivePrefUtil.getBool('playerCompatMode') ?? true,
         customPlayerOutput: HivePrefUtil.getBool('customPlayerOutput') ?? false,
         videoOutputDriver: HivePrefUtil.getString('videoOutputDriver') ?? 'gpu',
         audioOutputDriver: HivePrefUtil.getString('audioOutputDriver') ?? 'auto',
@@ -131,7 +131,7 @@ class PlayerSettingsController extends _$PlayerSettingsController {
     updateSettings(
       state.copyWith(
         enableCodec: true,
-        playerCompatMode: false,
+        playerCompatMode: true,
         customPlayerOutput: false,
         videoOutputDriver: 'gpu',
         audioOutputDriver: 'auto',

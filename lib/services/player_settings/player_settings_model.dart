@@ -15,7 +15,7 @@ abstract class PlayerSettingsModel with _$PlayerSettingsModel {
     @Default('') String preferResolution,
     @Default('') String preferResolutionCellular,
     @Default(true) bool enableCodec,
-    @Default(false) bool playerCompatMode,
+    @Default(true) bool playerCompatMode,
     @Default(false) bool customPlayerOutput,
     @Default('gpu') String videoOutputDriver,
     @Default('auto') String audioOutputDriver,

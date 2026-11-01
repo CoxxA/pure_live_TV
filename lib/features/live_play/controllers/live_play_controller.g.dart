@@ -189,7 +189,7 @@ final class DanmakuSessionControllerProvider
 }
 
 String _$danmakuSessionControllerHash() =>
-    r'80fd1c0bf0b6fc930629114c579eedcb93aa7214';
+    r'787952f15a6a816a842576fe58cf4d7f90c48493';
 
 /// Danmaku session for one room: owns the transport connection, message
 /// gating and duplicate filtering, and fans messages out to the overlay and

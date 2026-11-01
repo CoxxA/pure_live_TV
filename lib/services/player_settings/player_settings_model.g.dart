@@ -14,7 +14,7 @@ _PlayerSettingsModel _$PlayerSettingsModelFromJson(
   preferResolution: json['preferResolution'] as String? ?? '',
   preferResolutionCellular: json['preferResolutionCellular'] as String? ?? '',
   enableCodec: json['enableCodec'] as bool? ?? true,
-  playerCompatMode: json['playerCompatMode'] as bool? ?? false,
+  playerCompatMode: json['playerCompatMode'] as bool? ?? true,
   customPlayerOutput: json['customPlayerOutput'] as bool? ?? false,
   videoOutputDriver: json['videoOutputDriver'] as String? ?? 'gpu',
   audioOutputDriver: json['audioOutputDriver'] as String? ?? 'auto',

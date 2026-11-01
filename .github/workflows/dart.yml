@@ -7,6 +7,11 @@ on:
   pull_request:
     branches: [android5-compat]
   workflow_dispatch:
+    inputs:
+      publish_preview:
+        description: Publish the version in pubspec.yaml after all checks pass
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -36,10 +41,29 @@ jobs:
     needs: checks
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    outputs:
+      release_tag: ${{ steps.version.outputs.release_tag }}
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - name: Read and validate the compatibility version
+        id: version
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+          match = re.search(r'^version: (\d+\.\d+\.\d+-android5\.\d+)\+\d+\s*$', Path('pubspec.yaml').read_text(), re.M)
+          if match is None:
+              raise SystemExit('pubspec.yaml must contain an Android 5 compatibility version')
+          tag = 'v' + match.group(1)
+          ref = os.environ['GITHUB_REF']
+          if ref.startswith('refs/tags/') and ref != 'refs/tags/' + tag:
+              raise SystemExit('Release tag does not match pubspec.yaml')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('release_tag=' + tag + '\n')
+          PY
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -140,7 +164,7 @@ jobs:
           path: dist/api22-*
 
   publish:
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.publish_preview)
     needs: [build, api22-smoke]
     runs-on: ubuntu-latest
     permissions:
@@ -153,8 +177,10 @@ jobs:
       - name: Publish the compatibility preview
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.build.outputs.release_tag }}
+          target_commitish: ${{ github.sha }}
           prerelease: true
-          name: '${{ github.ref_name }} · Android 5 compatibility preview'
+          name: '${{ needs.build.outputs.release_tag }} · Android 5 compatibility preview'
           body: |
             为 Android 5.1.1 制作的独立兼容版，基于 Pure Live TV v3.0.7。
             固定 Skia 渲染器，保留 MPV / IJK，支持与旧版并行安装。
@@ -162,15 +188,16 @@ jobs:
             提供 armeabi-v7a（32 位）及 arm64-v8a（64 位）安装包；按电视系统架构选择。
             SHA256SUMS 列出两个安装包的校验值。
 
-            这是预览版。CI 检查不代表已通过小米 L55M4-AA 真机验证。
-            请重点验证斗鱼、B站、抖音的播放、声音、清晰度切换和遥控操作。
+            这是预览版，尚未达到稳定播放验收标准。该电视已完成安装、启动及三平台基本播放验证。
+            机主反馈 MPV 兼容模式可恢复音画同步，但降至 720P 后仍有轻微掉帧。
+            本修订默认开启 MPV 兼容模式，IJK 关闭未使用的截图 GLES 路径；请继续对比实际播放效果。
           files: |
             dist/PureLive-TV-android5-armeabi-v7a-skia.apk
             dist/PureLive-TV-android5-arm64-v8a-skia.apk
             dist/SHA256SUMS
 
   update-release-index:
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.publish_preview)
     needs: publish
     permissions:
       contents: write

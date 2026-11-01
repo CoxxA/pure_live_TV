@@ -44,6 +44,9 @@ FijkPlayerConfig buildFijkPlayerConfig() {
     proxyUrlResolver: ({required bool privateInput}) =>
         PlaybackProxyPolicy.currentNativeUrl(privateInput: privateInput),
     enableCodec: settings.enableCodec,
+    // Snapshot mode forces an extra GLES renderer on old Android TVs. This
+    // TV build has no snapshot action, so keep the direct playback path.
+    extraHostOptions: const <String, Object>{'enable-snapshot': 0},
   );
 }
 
@@ -129,7 +132,12 @@ class GlobalPlayerService {
     } catch (error, stackTrace) {
       // A probe that failed must not tune playback down, and it must not fail
       // startup either: the kernel keeps its unreported defaults.
-      log('GlobalPlayerService: platform probe failed: $error', name: 'GlobalPlayerService', error: error, stackTrace: stackTrace);
+      log(
+        'GlobalPlayerService: platform probe failed: $error',
+        name: 'GlobalPlayerService',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
   }
 

@@ -7,9 +7,11 @@ import 'package:media_core/media_core.dart';
 import 'package:media_kit/media_kit.dart' as mk;
 import 'package:media_kit_video/media_kit_video.dart' as mkv;
 import 'package:media_core_media_kit/media_core_media_kit.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, debugPrint, kIsWeb, TargetPlatform, ValueListenable;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, debugPrint, kIsWeb, TargetPlatform, ValueListenable;
 
-export 'package:media_core_media_kit/src/media_kit_player_config.dart' show MediaKitPlayerConfig, MediaKitProxyUrlResolver;
+export 'package:media_core_media_kit/src/media_kit_player_config.dart'
+    show MediaKitPlayerConfig, MediaKitProxyUrlResolver;
 export 'package:media_core_media_kit/src/media_kit_video_config.dart' show MediaKitVideoConfig, MediaKitVideoControls;
 
 /// [PlayerAdapter] implementation backed by the local media_kit
@@ -319,7 +321,10 @@ final class MediaKitPlayerAdapter extends PlayerAdapterBase implements PlayerVid
   String _preferredHardwareDecoder = 'auto-safe';
 
   /// Whether the current platform drives the compat-mode surface.
-  bool get _isCompatMode => playerCompatMode && defaultTargetPlatform == TargetPlatform.android;
+  bool get _isCompatMode => playerCompatMode && enableCodec && defaultTargetPlatform == TargetPlatform.android;
+
+  Timer? _playbackDiagnosticsTimer;
+  int _playbackDiagnosticsGeneration = 0;
 
   /// Whether the current platform supports the video frame progress
   /// heartbeat implementation.
@@ -394,6 +399,8 @@ final class MediaKitPlayerAdapter extends PlayerAdapterBase implements PlayerVid
 
     _hasOpened = true;
 
+    _startPlaybackDiagnostics();
+
     if (audioOnly) {
       await _applyAudioOnly(true);
     }
@@ -413,6 +420,7 @@ final class MediaKitPlayerAdapter extends PlayerAdapterBase implements PlayerVid
 
   @override
   Future<void> onStop() async {
+    _stopPlaybackDiagnostics();
     await player.stop();
 
     _playingNow = false;
@@ -445,6 +453,7 @@ final class MediaKitPlayerAdapter extends PlayerAdapterBase implements PlayerVid
 
   @override
   Future<void> onClose() async {
+    _stopPlaybackDiagnostics();
     await player.stop();
 
     _hasOpened = false;
@@ -462,6 +471,7 @@ final class MediaKitPlayerAdapter extends PlayerAdapterBase implements PlayerVid
 
   @override
   Future<void> onDispose() async {
+    _stopPlaybackDiagnostics();
     await Future.wait(_subscriptions.map((subscription) => subscription.cancel()));
 
     _subscriptions.clear();
@@ -810,6 +820,59 @@ final class MediaKitPlayerAdapter extends PlayerAdapterBase implements PlayerVid
     } catch (_) {
       // Best-effort.
     }
+  }
+
+  /// A bounded diagnostic window on older TVs, without logging stream URLs.
+  /// Some direct-surface VOs do not expose counters: report those as unavailable.
+  void _startPlaybackDiagnostics() {
+    _stopPlaybackDiagnostics();
+    if (defaultTargetPlatform != TargetPlatform.android || !_device.isLowEnd) return;
+
+    final generation = _playbackDiagnosticsGeneration;
+    var samples = 0;
+    var reading = false;
+    _playbackDiagnosticsTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
+      if (!_hasOpened || !_playingNow || reading) return;
+      reading = true;
+      try {
+        final native = _player?.platform;
+        if (native == null) return;
+        final values = <String>[];
+        for (final entry in const <String, String>{
+          'sourceFps': 'container-fps',
+          'outputFps': 'estimated-vf-fps',
+          'decoderDrops': 'decoder-frame-drop-count',
+          'outputDrops': 'frame-drop-count',
+          'avSync': 'avsync',
+          'hwdec': 'hwdec-current',
+        }.entries) {
+          if (generation != _playbackDiagnosticsGeneration) return;
+          var value = 'unavailable';
+          try {
+            // ignore: avoid_dynamic_calls
+            final raw = await (native as dynamic).getProperty(entry.value).timeout(const Duration(seconds: 1));
+            final result = raw.toString().trim();
+            if (result.isNotEmpty && RegExp(r'^[a-zA-Z0-9_.+\-]+$').hasMatch(result) && result.length < 48) {
+              value = result;
+            }
+          } catch (_) {
+            // Unsupported native counters do not interrupt playback.
+          }
+          values.add('${entry.key}=$value');
+        }
+        if (generation != _playbackDiagnosticsGeneration) return;
+        debugPrint('[Android5Playback] ${values.join(' ')}');
+        if (++samples >= 12) _stopPlaybackDiagnostics();
+      } finally {
+        reading = false;
+      }
+    });
+  }
+
+  void _stopPlaybackDiagnostics() {
+    _playbackDiagnosticsTimer?.cancel();
+    _playbackDiagnosticsTimer = null;
+    _playbackDiagnosticsGeneration++;
   }
 
   Future<void> _applyDecoderPolicy() async {

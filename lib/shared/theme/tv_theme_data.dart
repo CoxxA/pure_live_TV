@@ -59,7 +59,7 @@ class TvThemeData {
 
   /// Text/icon colour on the faded accent fill (focused, not selected). The
   /// contrast target is the blended colour, not the accent itself.
-  Color get onFadedFocusColor => backgroundColor;
+  Color get onFadedFocusColor => readableOn(Color.lerp(backgroundColor, focusColor, 0.5)!);
 
   /// The two candidate inks content is drawn in: near-black and white.
   static const Color _ink = Color(0xFF101014);
@@ -175,6 +175,24 @@ class TvThemeData {
     return HSLColor.fromAHSL(1, hsl.hue, hsl.saturation.clamp(0.55, 0.95), 0.52).toColor();
   }
 
+  /// Keeps focus rings visible on a light page while changing the seed as
+  /// little as possible. A fixed HSL lightness is too pale for green/yellow.
+  static Color _lightPageAccent(Color seed, Color background) {
+    final Color accent = _vividAccent(seed);
+    if (_contrastOf(accent, background) > 3.0) return accent;
+    double lower = 0;
+    double upper = 1;
+    for (int i = 0; i < 12; i++) {
+      final double amount = (lower + upper) / 2;
+      if (_contrastOf(Color.lerp(accent, _ink, amount)!, background) >= 3.05) {
+        upper = amount;
+      } else {
+        lower = amount;
+      }
+    }
+    return Color.lerp(accent, _ink, upper)!;
+  }
+
   /// A surface of the seed's hue at the given depth.
   ///
   /// [lightness] picks the rung of the ladder; [saturation] defaults to a
@@ -205,9 +223,10 @@ class TvThemeData {
   /// tones — white-ish, but carrying the preset's colour temperature instead
   /// of flat studio white.
   TvThemeData _deriveLight(Color accent) {
+    final Color background = _tinted(accent, 0.955, 0.30);
     return copyWith(
-      focusColor: _vividAccent(accent),
-      backgroundColor: _tinted(accent, 0.955, 0.30),
+      focusColor: _lightPageAccent(accent, background),
+      backgroundColor: background,
       cardColor: _tinted(accent, 0.99, 0.22),
       primaryTextColor: _tinted(accent, 0.13, 0.28),
       secondaryTextColor: _tinted(accent, 0.13, 0.28),

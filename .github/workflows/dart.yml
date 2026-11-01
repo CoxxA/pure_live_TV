@@ -29,7 +29,7 @@ jobs:
       - run: flutter pub get --enforce-lockfile
       - run: dart run build_runner build --delete-conflicting-outputs
       - run: flutter analyze --no-fatal-infos
-      - run: flutter test test/android5_player_settings_test.dart test/android5_update_policy_test.dart test/android5_video_transform_test.dart test/remote_sync_address_test.dart test/app_update_test.dart test/backup_format_test.dart test/player_panel_close_row_test.dart test/danmaku_settings_test.dart
+      - run: flutter test --concurrency=2
 
   build:
     if: github.event_name != 'pull_request'
@@ -115,6 +115,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: android5-apks
@@ -131,22 +132,12 @@ jobs:
           arch: x86_64
           target: default
           disable-animations: true
-          script: |
-            adb install dist/PureLive-TV-android5-x86_64-skia.apk
-            adb logcat -c
-            adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -p com.coxxa.purelive.tv.android5
-            sleep 20
-            adb shell ps | grep -F com.coxxa.purelive.tv.android5
-            adb logcat -d > dist/api22-logcat.txt
-            adb exec-out screencap -p > dist/api22-startup.png
-            ! grep -E 'FATAL EXCEPTION|dlopen failed|cannot locate symbol' dist/api22-logcat.txt
+          script: bash tool/api22_smoke.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: api22-startup-evidence
-          path: |
-            dist/api22-logcat.txt
-            dist/api22-startup.png
+          path: dist/api22-*
 
   publish:
     if: startsWith(github.ref, 'refs/tags/')

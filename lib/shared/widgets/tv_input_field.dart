@@ -381,9 +381,6 @@ class _TvTextFieldFallback extends StatefulWidget {
 }
 
 class _TvTextFieldFallbackState extends State<_TvTextFieldFallback> {
-  /// The editing node, alive only while the field is being typed into.
-  FocusNode? _editNode;
-
   static bool _isConfirm(LogicalKeyboardKey key) =>
       key == LogicalKeyboardKey.select ||
       key == LogicalKeyboardKey.enter ||
@@ -394,24 +391,17 @@ class _TvTextFieldFallbackState extends State<_TvTextFieldFallback> {
       key == LogicalKeyboardKey.gameButtonA;
 
   void _startEditing() {
-    _editNode ??= FocusNode(debugLabel: 'tv_input_edit');
     widget.onEditingChanged(true);
-    // The node must exist before the next frame builds the TextField; focusing
-    // it here is what opens the soft keyboard on mobile/desktop.
+    // Keep one node across display/edit so dialog focus guards and callers
+    // continue to address the real field. Focus it after the TextField mounts.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && widget.editing) _editNode?.requestFocus();
+      if (mounted && widget.editing) widget.focusNode.requestFocus();
     });
   }
 
   void _stopEditing() {
     widget.onEditingChanged(false);
     if (mounted) widget.focusNode.requestFocus();
-  }
-
-  @override
-  void dispose() {
-    _editNode?.dispose();
-    super.dispose();
   }
 
   KeyEventResult _onDisplayKey(FocusNode node, KeyEvent event) {
@@ -456,10 +446,12 @@ class _TvTextFieldFallbackState extends State<_TvTextFieldFallback> {
     }
 
     return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
       onKeyEvent: _onEditKey,
       child: TextField(
         controller: widget.controller,
-        focusNode: _editNode,
+        focusNode: widget.focusNode,
         autofocus: true,
         obscureText: widget.obscureText,
         textAlign: widget.textAlign,

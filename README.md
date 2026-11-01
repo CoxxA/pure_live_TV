@@ -9,6 +9,7 @@
 - 保留新版界面、平台解析、搜索、收藏、历史、弹幕、IPTV 与手机网页遥控。
 - 优先验证 **斗鱼、B站、抖音**；平台登录与高清观看仍受各平台账号和接口限制。
 - 使用 **Skia** 渲染器，播放内核保留 **MPV / IJK**，移除 FVP / Exo；视频壁纸默认关闭，可使用静态壁纸。
+- 修复对话框输入焦点和部分浅色主题的文字对比度，并通过原有回归测试。
 - 独立包名：`com.coxxa.purelive.tv.android5`；应用名称：**纯粹直播 TV（安卓5兼容版）**。
 - 可与原来的 v2.0.20 并行安装。首次测试请保留旧版，收藏与设置可以通过应用内备份/恢复迁移。
 
@@ -50,7 +51,7 @@
 flutter pub get --enforce-lockfile
 dart run build_runner build --delete-conflicting-outputs
 flutter analyze --no-fatal-infos
-flutter test test/android5_player_settings_test.dart test/android5_update_policy_test.dart test/android5_video_transform_test.dart test/remote_sync_address_test.dart test/app_update_test.dart test/backup_format_test.dart test/player_panel_close_row_test.dart test/danmaku_settings_test.dart
+flutter test --concurrency=2
 flutter build apk --release --flavor skia --split-per-abi --target-platform android-arm,android-arm64
 ```
 

@@ -66,6 +66,7 @@ class _TvInputDialogState extends State<TvInputDialog> {
 
     return TvDialog(
       title: widget.title,
+      initialFocusNode: _focusNode,
       confirmText: i18n('exit_yes'),
       cancelText: i18n('cancel'),
       onConfirm: _submit,

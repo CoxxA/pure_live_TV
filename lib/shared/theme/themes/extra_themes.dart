@@ -151,7 +151,7 @@ const TvThemeData warmLightTvTheme = TvThemeData(
   backgroundColor: Color(0xffF8F4ED),
   focusColor: Color(0xffC2703A),
   primaryTextColor: Color(0xff241E17),
-  secondaryTextColor: Colors.white,
+  secondaryTextColor: Color(0xff5B5147),
   cardColor: Color(0xffFFFFFF),
   focusedCardColor: Color(0xffFFFFFF),
 );
@@ -163,7 +163,7 @@ const TvThemeData mintLightTvTheme = TvThemeData(
   backgroundColor: Color(0xffEDF7F5),
   focusColor: Color(0xff0E9F8C),
   primaryTextColor: Color(0xff16211F),
-  secondaryTextColor: Colors.white,
+  secondaryTextColor: Color(0xff405B55),
   cardColor: Color(0xffFFFFFF),
   focusedCardColor: Color(0xffFFFFFF),
 );

@@ -3,7 +3,6 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil_plus/flutter_screenutil_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,12 +25,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    final Uint8List fontBytes = File('assets/MiSans-Regular.ttf').readAsBytesSync();
-    for (final String family in <String>['MiSans', 'Roboto']) {
-      final FontLoader loader = FontLoader(family)
-        ..addFont(Future<ByteData>.value(ByteData.view(fontBytes.buffer)));
-      await loader.load();
-    }
+    // Use the same default-font path as a fresh app installation.
 
     final fake = _FakeTagController(
       TagManagementModel(
@@ -45,13 +39,22 @@ void main() {
       ),
     );
 
+    final Directory out = Directory('build/test-previews/tag-management')
+      ..createSync(recursive: true);
     Future<void> snap(String file) async {
       await tester.runAsync(() async {
-        final RenderRepaintBoundary boundary =
-            tester.renderObject<RenderRepaintBoundary>(find.byKey(const Key('tag-page')));
+        final RenderRepaintBoundary boundary = tester
+            .renderObject<RenderRepaintBoundary>(
+              find.byKey(const Key('tag-page')),
+            );
         final ui.Image image = await boundary.toImage();
-        final ByteData? data = await image.toByteData(format: ui.ImageByteFormat.png);
-        File('test/goldens/$file').writeAsBytesSync(data!.buffer.asUint8List());
+        expect(image.width, 1920);
+        expect(image.height, 1080);
+        final data = await image.toByteData(format: ui.ImageByteFormat.png);
+        expect(data, isNotNull);
+        expect(data!.lengthInBytes, greaterThan(0));
+        File('${out.path}/$file').writeAsBytesSync(data.buffer.asUint8List());
+        image.dispose();
       });
     }
 
@@ -77,8 +80,10 @@ void main() {
                 palette: blueTvTheme,
                 brightness: Brightness.dark,
                 baseTextTheme: ThemeData(brightness: Brightness.dark).textTheme,
-                fontFamily: 'MiSans',
-                colorScheme: ColorScheme.fromSeed(seedColor: blueTvTheme.focusColor, brightness: Brightness.dark),
+                colorScheme: ColorScheme.fromSeed(
+                  seedColor: blueTvTheme.focusColor,
+                  brightness: Brightness.dark,
+                ),
               ),
               home: RepaintBoundary(
                 key: const Key('tag-page'),
@@ -98,7 +103,11 @@ void main() {
     // RemoteSyncQrCard animates forever; a fixed pump is the settle.
     await tester.pump(const Duration(milliseconds: 1200));
 
-    Directory('test/goldens').createSync(recursive: true);
+    expect(
+      tester.takeException(),
+      isNull,
+      reason: 'the tag cloud must fit without a custom font',
+    );
     await snap('tag_page_chips.png');
 
     // Tap the first chip: the tag detail dialog (查看 + 删除). The dialog
@@ -106,21 +115,46 @@ void main() {
     // verified programmatically rather than in the PNG.
     await tester.tap(find.text('王者荣耀'), warnIfMissed: true);
     await tester.pump(const Duration(milliseconds: 800));
-    expect(find.byType(TvDialog), findsOneWidget, reason: 'chip tap opens the detail dialog');
+    expect(
+      find.byType(TvDialog),
+      findsOneWidget,
+      reason: 'chip tap opens the detail dialog',
+    );
     // Unlocalized test shell: i18n falls back to the key, which is what the
     // matchers target (same convention as app_update_test).
-    expect(find.text('tag_detail'), findsOneWidget, reason: 'dialog title 标签详情');
+    expect(
+      find.text('tag_detail'),
+      findsOneWidget,
+      reason: 'dialog title 标签详情',
+    );
     expect(find.text('delete'), findsOneWidget, reason: 'the delete action');
     // 'cancel' sits in the offline label table, which translates it to 取消.
     await tester.tap(find.text('取消'));
     await tester.pump(const Duration(milliseconds: 800));
-    expect(find.byType(TvDialog), findsNothing, reason: 'cancel closes the dialog');
+    expect(
+      find.byType(TvDialog),
+      findsNothing,
+      reason: 'cancel closes the dialog',
+    );
 
     // Tap the add row: the two-field add dialog.
     await tester.tap(find.text('ui_add'));
     await tester.pump(const Duration(milliseconds: 800));
-    expect(find.byType(TvDialog), findsOneWidget, reason: 'add opens the create dialog');
-    expect(find.byType(TvInputField), findsNWidgets(2), reason: 'name + description fields');
+    expect(
+      find.byType(TvDialog),
+      findsOneWidget,
+      reason: 'add opens the create dialog',
+    );
+    expect(
+      find.byType(TvInputField),
+      findsNWidgets(2),
+      reason: 'name + description fields',
+    );
+    expect(
+      tester.takeException(),
+      isNull,
+      reason: 'both dialogs must fit the default font layout',
+    );
   });
 }
 

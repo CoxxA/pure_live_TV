@@ -3,7 +3,6 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil_plus/flutter_screenutil_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,7 +23,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUpAll(() async {
-    final Directory dir = Directory.systemTemp.createTempSync('pure_live_download_preview');
+    final Directory dir = Directory.systemTemp.createTempSync(
+      'pure_live_download_preview',
+    );
     Hive.init(dir.path);
     await HivePrefUtil.init();
     SettingsService.to.init(ProviderContainer());
@@ -35,33 +36,37 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    final Uint8List fontBytes = File('assets/MiSans-Regular.ttf').readAsBytesSync();
-    for (final String family in <String>['MiSans', 'Roboto']) {
-      final FontLoader loader = FontLoader(family)
-        ..addFont(Future<ByteData>.value(ByteData.view(fontBytes.buffer)));
-      await loader.load();
-    }
-
-    final String originUrl =
-        'https://github.com/iuiaoin/pure_live_tv/releases/download/v1.3.0/pure_live_tv_arm64.apk';
+    // The app now defaults to the platform font; no bundled MiSans fixture is
+    // part of a fresh installation. Keep the preview on that default path.
+    const String version = '3.0.7-android5.1';
+    const String origin =
+        'https://github.com/CoxxA/pure_live_TV/releases/download/v$version';
     final fake = _FakeUpdateController(
       AppUpdateState(
         phase: AppUpdatePhase.available,
-        currentVersion: '1.2.0',
-        currentBuild: '45',
-        latestVersion: '1.3.0',
+        currentVersion: '3.0.7-android5.0',
+        currentBuild: '1000',
+        latestVersion: version,
         changelog: '修复了 A\n新增了 B',
         changelogMarkdown:
-            '# v1.3.0 更新日志\n\n- 修复了**在线更新**在部分电视盒子上的下载失败问题\n- 新增 `下载源` 选择,支持 5 个镜像加速\n- 优化弹幕渲染性能\n\n> 注意:安装时需要授予“安装未知应用”权限。',
-        abis: ['arm64-v8a', 'armeabi-v7a', 'x86_64'],
+            '# v$version 更新日志\n\n- 修复了**在线更新**在部分电视盒子上的下载失败问题\n- 支持 `下载源` 选择\n- 优化弹幕渲染性能\n\n> Android 5 使用系统设置中的未知来源选项。',
+        abis: ['arm64-v8a', 'armeabi-v7a'],
         history: [
           ReleaseModel(
-            version: 'v1.3.0',
-            date: '2026-09-19',
+            version: version,
+            date: '2026-11-01',
             author: const AuthorModel(),
             files: [
-              ReleaseFileModel(name: 'arm64-v8a', size: '42.5 MB', url: originUrl),
-              ReleaseFileModel(name: 'armeabi-v7a', size: '39.1 MB', url: originUrl),
+              ReleaseFileModel(
+                name: 'PureLive-TV-android5-arm64-v8a-skia.apk',
+                size: '42.5 MB',
+                url: '$origin/PureLive-TV-android5-arm64-v8a-skia.apk',
+              ),
+              ReleaseFileModel(
+                name: 'PureLive-TV-android5-armeabi-v7a-skia.apk',
+                size: '39.1 MB',
+                url: '$origin/PureLive-TV-android5-armeabi-v7a-skia.apk',
+              ),
             ],
           ),
         ],
@@ -84,33 +89,60 @@ void main() {
             splitScreenMode: false,
             child: MaterialApp(
               locale: const Locale('zh'),
-              theme: ThemeData(extensions: <ThemeExtension<dynamic>>[TvThemeExtension(theme: blueTvTheme)]),
-              home: const RepaintBoundary(key: Key('dl-page'), child: AppDownloadPage()),
+              theme: ThemeData(
+                extensions: <ThemeExtension<dynamic>>[
+                  TvThemeExtension(theme: blueTvTheme),
+                ],
+              ),
+              home: const RepaintBoundary(
+                key: Key('dl-page'),
+                child: AppDownloadPage(),
+              ),
             ),
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
+    expect(
+      tester.takeException(),
+      isNull,
+      reason: 'the download layout must not overflow',
+    );
+    expect(find.text('42.5 MB'), findsOneWidget);
+    expect(find.text('39.1 MB'), findsOneWidget);
+
+    final Directory out = Directory('build/test-previews/app-download')
+      ..createSync(recursive: true);
 
     Future<void> snap(String file) async {
       await tester.runAsync(() async {
-        final RenderRepaintBoundary boundary =
-            tester.renderObject<RenderRepaintBoundary>(find.byKey(const Key('dl-page')));
+        final RenderRepaintBoundary boundary = tester
+            .renderObject<RenderRepaintBoundary>(
+              find.byKey(const Key('dl-page')),
+            );
         final ui.Image image = await boundary.toImage();
-        final ByteData? data = await image.toByteData(format: ui.ImageByteFormat.png);
-        File('test/goldens/$file').writeAsBytesSync(data!.buffer.asUint8List());
+        expect(image.width, 1920);
+        expect(image.height, 1080);
+        final data = await image.toByteData(format: ui.ImageByteFormat.png);
+        expect(data, isNotNull);
+        expect(data!.lengthInBytes, greaterThan(0));
+        File('${out.path}/$file').writeAsBytesSync(data.buffer.asUint8List());
+        image.dispose();
       });
     }
 
-    final Directory out = Directory('test/goldens');
-    if (!out.existsSync()) out.createSync(recursive: true);
     await snap('download_page_top.png');
 
     // Bottom of the page: the markdown release notes.
     final scroller = find.byType(Scrollable).first;
     await tester.drag(scroller, const Offset(0, -800));
     await tester.pumpAndSettle();
+    expect(
+      tester.takeException(),
+      isNull,
+      reason: 'the scrolled notes layout must not overflow',
+    );
     await snap('download_page_bottom.png');
   });
 }
@@ -127,5 +159,6 @@ class _FakeUpdateController extends AppUpdateController {
   Future<void> loadHistory() async {}
 
   @override
-  Future<bool> downloadAsset(String url, {bool preferGivenUrl = false}) async => false;
+  Future<bool> downloadAsset(String url, {bool preferGivenUrl = false}) async =>
+      false;
 }

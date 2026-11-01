@@ -1,1 +1,26 @@
-[]
+[
+  {
+    "version": "3.0.7-android5.1",
+    "title": "v3.0.7-android5.1 · Android 5 compatibility preview",
+    "date": "2026-11-01",
+    "github": "https://github.com/CoxxA/pure_live_TV/releases/tag/v3.0.7-android5.1",
+    "author": {
+      "name": "CoxxA"
+    },
+    "changeLog": "为 Android 5.1.1 制作的独立兼容版，基于 Pure Live TV v3.0.7。\n固定 Skia 渲染器，保留 MPV / IJK，支持与旧版并行安装。\n\n提供 armeabi-v7a（32 位）及 arm64-v8a（64 位）安装包；按电视系统架构选择。\nSHA256SUMS 列出两个安装包的校验值。\n\n这是预览版。CI 检查不代表已通过小米 L55M4-AA 真机验证。\n请重点验证斗鱼、B站、抖音的播放、声音、清晰度切换和遥控操作。\n",
+    "files": [
+      {
+        "name": "PureLive-TV-android5-armeabi-v7a-skia.apk",
+        "size": "34.03 MB",
+        "downloads": 0,
+        "url": "https://github.com/CoxxA/pure_live_TV/releases/download/v3.0.7-android5.1/PureLive-TV-android5-armeabi-v7a-skia.apk"
+      },
+      {
+        "name": "PureLive-TV-android5-arm64-v8a-skia.apk",
+        "size": "36.59 MB",
+        "downloads": 0,
+        "url": "https://github.com/CoxxA/pure_live_TV/releases/download/v3.0.7-android5.1/PureLive-TV-android5-arm64-v8a-skia.apk"
+      }
+    ]
+  }
+]

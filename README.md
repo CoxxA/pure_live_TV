@@ -4,12 +4,14 @@
 
 **状态：已通过该电视的安装、启动与基本播放测试，继续保留预览状态。** 已在小米 L55M4-AA / Android 5.1.1 的 32 位系统播放斗鱼、B站、抖音，收藏及重新启动已验证。MPV 开启兼容模式后声音同步，仍有轻微掉帧；机主反馈旧版也有类似现象。IJK 减少额外渲染后卡顿改善，但仍有音画不同步，暂不推荐用于这台电视。自动检查不能代替真机流畅度判断。
 
+[安装说明与完整真机验证记录](docs/android5-compat.md)。抖音关键词搜索本轮返回空列表，未验证通过；可从热门或收藏进入直播。
+
 ## 功能与兼容取舍
 
 - 保留新版界面、平台解析、搜索、收藏、历史、弹幕、IPTV 与手机网页遥控。
 - 优先验证 **斗鱼、B站、抖音**；平台登录与高清观看仍受各平台账号和接口限制。
 - 使用 **Skia** 渲染器，播放内核保留 **MPV / IJK**，移除 FVP / Exo；视频壁纸默认关闭，可使用静态壁纸。
-- 第二个预览版默认开启 MPV 兼容模式；IJK 关闭未使用的截图功能，避免强制额外 GLES 渲染。保留清晰度及软硬解切换。已有的手动设置会保留。
+- 兼容修订版默认开启 MPV 兼容模式；IJK 关闭未使用的截图功能，避免强制额外 GLES 渲染。保留清晰度及软硬解切换。已有的手动设置会保留。
 - 修复 Android 5 搜索等原生输入框不能显示的问题，使用最低 API19 的原生视图组合方式。
 - 修复对话框输入焦点和部分浅色主题的文字对比度，并通过原有回归测试。
 - 独立包名：`com.coxxa.purelive.tv.android5`；应用名称：**纯粹直播 TV（安卓5兼容版）**。
@@ -73,6 +75,8 @@ flutter build apk --release --flavor skia --split-per-abi --target-platform andr
 私钥和 `android/key.properties` 不应提交到源码。缺少任一签名 Secret 时，APK job 会明确失败，不会把临时 debug 签名包作为兼容版本发布。请保存签名材料的私密备份；后续覆盖升级需要使用同一签名。
 
 推送标签 **`v3.0.7-android5.1`**（后续递增兼容修订号和 `versionCode`），只有构建、签名检查、API22 启动检查通过后才发布预览 Release。Release 提供 ARM32 / ARM64 APK 与 SHA256，构建页另外保留包信息、签名报告和模拟器证据。
+
+也可在 Actions 中手动运行 **Android 5 compatibility**，勾选 `publish_preview`；全部检查通过后，按 `pubspec.yaml` 的兼容版本号发布预览版。
 
 在线更新只读取 **CoxxA/pure_live_TV 的 android5-compat 分支**，仅接受匹配版本的兼容标签和 ARM Skia 包；不会回退下载上游 Android 7+ 安装包。发布后的索引 workflow 会更新 `assets/version.json` 与 `assets/releases.json`。
 
